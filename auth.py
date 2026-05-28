@@ -142,7 +142,7 @@ def login_post():
 # Logout
 # ---------------------------------------------------------------------------
 
-@auth.route('/logout')
+@auth.route('/logout', methods=['GET', 'POST'])
 def logout():
     logout_user()
     return redirect(url_for('auth.login'))
