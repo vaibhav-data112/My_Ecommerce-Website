@@ -2,9 +2,10 @@ import os
 
 from authlib.integrations.flask_client import OAuth
 from dotenv import load_dotenv
-from flask import Flask, render_template
+from flask import Flask, redirect, render_template, url_for
 
 from auth import auth, init_google_oauth, init_login_manager
+from catalog import catalog
 from db import init_db, migrate_db, seed_db
 
 load_dotenv()
@@ -23,11 +24,12 @@ app.oauth = oauth
 init_google_oauth(oauth)
 
 app.register_blueprint(auth)
+app.register_blueprint(catalog)
 
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return redirect(url_for('catalog.product_list'))
 
 
 if __name__ == '__main__':

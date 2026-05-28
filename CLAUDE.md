@@ -6,9 +6,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **Python 3 + Flask + SQLite** (decided in feature `01-database-setup`).
 
-- `flask>=3.0.0` is the only external dependency (declared in `requirements.txt`).
-- `werkzeug` (bundled with Flask) provides password hashing via `generate_password_hash` / `check_password_hash`.
-- `sqlite3` is Python's stdlib database driver; the database file is `ecommerce.db` in the project root.
+Dependencies in `requirements.txt`:
+- `flask>=3.0.0` — web framework
+- `flask-login>=0.6.3` — session/authentication management
+- `authlib>=1.3.0` — Google OAuth
+- `python-dotenv>=1.0.0` — `.env` loading
+- `requests>=2.31.0` — HTTP client
+- `werkzeug` (bundled with Flask) — password hashing via `generate_password_hash` / `check_password_hash`
+- `sqlite3` — Python stdlib database driver; database file is `ecommerce.db` in the project root
 
 ## Commands
 
@@ -19,9 +24,11 @@ python -m pip install -r requirements.txt
 # Run the development server (auto-creates and seeds ecommerce.db on first run)
 python app.py
 
-# Run acceptance-criteria tests (uses a temp DB, safe to run anytime)
+# Run acceptance-criteria tests for a feature (uses a temp DB, safe to run anytime)
 python test_auth.py
 ```
+
+Test files follow the pattern `test_{feature-name}.py` — one per feature.
 
 **Environment variables** (put in `.env`, never commit):
 ```
@@ -33,15 +40,26 @@ GOOGLE_CLIENT_SECRET=<from Google Cloud Console>
 ## Architecture
 
 ```
-app.py      — Flask application entry point; calls init_db() and seed_db() at startup
-db.py       — Database helper module: get_db(), init_db(), seed_db()
-ecommerce.db — SQLite database file (created automatically; not committed)
+app.py      — Flask entry point: calls init_db(), migrate_db(), seed_db(), registers blueprints
+db.py       — Database helpers: get_db(), init_db(), migrate_db(), seed_db()
+auth.py     — Auth blueprint: signup/login/logout routes, User model, Flask-Login, Google OAuth
+ecommerce.db — SQLite database file (auto-created; not committed)
+templates/  — Jinja2 templates; all pages extend templates/base.html
 ```
+
+**Startup sequence in `app.py`:** `init_db()` → `migrate_db()` → `seed_db()`. Schema changes added after the initial release go in `migrate_db()` (not `init_db()`), using `PRAGMA table_info` to check if a column already exists before `ALTER TABLE`.
+
+**Blueprint pattern:** New features are implemented as Flask Blueprints (see `auth.py`). Each blueprint is created in its own module and registered in `app.py` via `app.register_blueprint(...)`.
 
 **`db.py` patterns to follow in all future features:**
 - `get_db()` opens `ecommerce.db`, sets `row_factory = sqlite3.Row`, and enables `PRAGMA foreign_keys = ON` on every connection.
 - All SQL uses parameterised `?` placeholders — never string interpolation.
 - Passwords are always stored via `generate_password_hash()`; checked via `check_password_hash()`.
+
+**Auth patterns:**
+- Import `login_required` from `auth.py` to protect routes.
+- `current_user` from `flask_login` is available in all Jinja2 templates (injected by Flask-Login) — used in `base.html` for nav state.
+- The `User` class (in `auth.py`) wraps a `sqlite3.Row` and implements `UserMixin`.
 
 ## Database Schema
 
@@ -49,7 +67,7 @@ Five tables (all created by `init_db()` in `db.py`):
 
 | Table | Purpose |
 |-------|---------|
-| `users` | Registered accounts |
+| `users` | Registered accounts; has `google_id` column added via `migrate_db()` |
 | `products` | Product catalogue with stock |
 | `cart_items` | Per-user shopping cart (FK → users, products) |
 | `orders` | Confirmed order header (FK → users) |
@@ -72,7 +90,7 @@ This project uses **Spec-Driven Development (SDD)**. The full workflow is in `.c
 | NN | Branch | What it builds |
 |----|--------|----------------|
 | 01 | `database-setup` | Database schema — users, products, orders tables ✅ |
-| 02 | `user-auth` | Signup, login, logout, password security |
+| 02 | `user-auth` | Signup, login, logout, password security, Google OAuth ✅ |
 | 03 | `product-catalog` | Product list + detail page |
 | 04 | `search-filter` | Search bar, category filters, pagination |
 | 05 | `shopping-cart` | Add/remove items, quantity update |
