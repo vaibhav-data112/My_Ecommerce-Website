@@ -70,6 +70,22 @@ def init_db():
         conn.close()
 
 
+def get_all_products():
+    conn = get_db()
+    try:
+        return conn.execute("SELECT * FROM products ORDER BY created_at DESC").fetchall()
+    finally:
+        conn.close()
+
+
+def get_product_by_id(product_id):
+    conn = get_db()
+    try:
+        return conn.execute("SELECT * FROM products WHERE id = ?", (product_id,)).fetchone()
+    finally:
+        conn.close()
+
+
 def migrate_db():
     conn = get_db()
     try:
