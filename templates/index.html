@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% block title %}Home — My Shop{% endblock %}
+
+{% block content %}
+<div class="card">
+    {% if current_user.is_authenticated %}
+        <h2>Welcome back, {{ current_user.name }}!</h2>
+        <p style="margin-top:.75rem;color:#555">The product catalogue is coming soon.</p>
+    {% else %}
+        <h2>Welcome to My Shop</h2>
+        <p style="margin-top:.75rem;color:#555">
+            <a href="/signup">Create an account</a> or <a href="/login">log in</a> to start shopping.
+        </p>
+    {% endif %}
+</div>
+{% endblock %}

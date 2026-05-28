@@ -70,6 +70,21 @@ def init_db():
         conn.close()
 
 
+def migrate_db():
+    conn = get_db()
+    try:
+        cols = [r[1] for r in conn.execute("PRAGMA table_info(users)").fetchall()]
+        if 'google_id' not in cols:
+            conn.execute("ALTER TABLE users ADD COLUMN google_id TEXT")
+            conn.execute(
+                "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google_id ON users (google_id)"
+                " WHERE google_id IS NOT NULL"
+            )
+            conn.commit()
+    finally:
+        conn.close()
+
+
 def seed_db():
     conn = get_db()
     try:
