@@ -1,3 +1,4 @@
+import os
 import sqlite3
 from werkzeug.security import generate_password_hash
 
@@ -346,6 +347,14 @@ def migrate_db():
             if col not in orders_cols:
                 conn.execute(ddl)
 
+        cols = [r[1] for r in conn.execute("PRAGMA table_info(users)").fetchall()]
+        if 'is_admin' not in cols:
+            conn.execute("ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0")
+
+        admin_email = os.environ.get('ADMIN_EMAIL')
+        if admin_email:
+            conn.execute("UPDATE users SET is_admin = 1 WHERE email = ?", (admin_email.lower(),))
+
         conn.commit()
     finally:
         conn.close()
@@ -358,7 +367,7 @@ def seed_db():
             return
 
         conn.execute(
-            "INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)",
+            "INSERT INTO users (name, email, password_hash, is_admin) VALUES (?, ?, ?, 1)",
             ("Demo User", "demo@example.com", generate_password_hash("demo1234")),
         )
 
@@ -375,6 +384,67 @@ def seed_db():
             " VALUES (?, ?, ?, ?, ?, ?)",
             products,
         )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+# ---------------------------------------------------------------------------
+# Admin helpers
+# ---------------------------------------------------------------------------
+
+def create_product(name, description, price, stock, category, image_url):
+    conn = get_db()
+    try:
+        conn.execute(
+            "INSERT INTO products (name, description, price, stock, category, image_url)"
+            " VALUES (?, ?, ?, ?, ?, ?)",
+            (name, description, price, stock, category, image_url or None),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def update_product(product_id, name, description, price, stock, category, image_url):
+    conn = get_db()
+    try:
+        conn.execute(
+            "UPDATE products SET name=?, description=?, price=?, stock=?, category=?, image_url=?"
+            " WHERE id=?",
+            (name, description, price, stock, category, image_url or None, product_id),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def delete_product(product_id):
+    conn = get_db()
+    try:
+        conn.execute("DELETE FROM products WHERE id = ?", (product_id,))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def get_all_orders_admin():
+    conn = get_db()
+    try:
+        return conn.execute("""
+            SELECT o.*, u.name AS customer_name, u.email AS customer_email
+            FROM orders o
+            JOIN users u ON u.id = o.user_id
+            ORDER BY o.created_at DESC
+        """).fetchall()
+    finally:
+        conn.close()
+
+
+def update_order_status(order_id, status):
+    conn = get_db()
+    try:
+        conn.execute("UPDATE orders SET status = ? WHERE id = ?", (status, order_id))
         conn.commit()
     finally:
         conn.close()

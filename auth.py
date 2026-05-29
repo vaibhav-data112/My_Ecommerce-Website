@@ -24,6 +24,7 @@ class User(UserMixin):
         self.id = str(row['id'])
         self.name = row['name']
         self.email = row['email']
+        self.is_admin = bool(row['is_admin']) if 'is_admin' in row.keys() else False
 
 
 def load_user_by_id(user_id):

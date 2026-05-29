@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+{% block title %}Manage Products — Admin{% endblock %}
+
+{% block content %}
+<style>
+    .page-heading { font-size: 1.5rem; font-weight: 700; margin-bottom: 1.5rem; color: #1a1a2e; }
+    .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+    .back-link { color: #1a1a2e; text-decoration: none; font-size: .9rem; }
+    .back-link:hover { text-decoration: underline; }
+    .products-table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,.07); }
+    .products-table th { background: #f5f5f5; text-align: left; padding: .7rem 1rem; font-size: .78rem; color: #555; text-transform: uppercase; letter-spacing: .05em; }
+    .products-table td { padding: .85rem 1rem; border-top: 1px solid #eee; font-size: .93rem; vertical-align: middle; }
+    .products-table tr:hover td { background: #fafafa; }
+    .actions { display: flex; gap: .5rem; }
+    .btn-sm { padding: .35rem .8rem; font-size: .82rem; border-radius: 4px; font-weight: 600; cursor: pointer; border: none; text-decoration: none; display: inline-block; }
+    .btn-edit { background: #1a1a2e; color: #fff; }
+    .btn-delete { background: #e74c3c; color: #fff; }
+    .btn-add { background: #27ae60; color: #fff; padding: .5rem 1.1rem; border-radius: 4px; font-weight: 600; text-decoration: none; font-size: .95rem; }
+    .empty-state { text-align: center; padding: 4rem 2rem; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,.07); }
+    .empty-state h2 { font-size: 1.2rem; color: #555; margin-bottom: .75rem; }
+    .stock-low { color: #e74c3c; font-weight: 700; }
+</style>
+
+<div class="page-header">
+    <div>
+        <a class="back-link" href="{{ url_for('admin.dashboard') }}">&larr; Dashboard</a>
+        <h1 class="page-heading" style="margin-top:.4rem;margin-bottom:0">Manage Products</h1>
+    </div>
+    <a class="btn-add" href="{{ url_for('admin.add_product') }}">+ Add Product</a>
+</div>
+
+{% if products %}
+<table class="products-table">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Category</th>
+            <th>Price</th>
+            <th>Stock</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for p in products %}
+        <tr>
+            <td>{{ p['id'] }}</td>
+            <td>{{ p['name'] }}</td>
+            <td>{{ p['category'] }}</td>
+            <td>&#8377;{{ "%.2f"|format(p['price']) }}</td>
+            <td class="{% if p['stock'] == 0 %}stock-low{% endif %}">{{ p['stock'] }}</td>
+            <td>
+                <div class="actions">
+                    <a class="btn-sm btn-edit" href="{{ url_for('admin.edit_product', product_id=p['id']) }}">Edit</a>
+                    <form method="post" action="{{ url_for('admin.delete_product_route', product_id=p['id']) }}"
+                          onsubmit="return confirm('Delete \"{{ p['name'] }}\"? This cannot be undone.')">
+                        <button class="btn-sm btn-delete" type="submit">Delete</button>
+                    </form>
+                </div>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="empty-state">
+    <h2>No products yet.</h2>
+    <a class="btn-add" href="{{ url_for('admin.add_product') }}" style="display:inline-block;margin-top:.5rem;">+ Add your first product</a>
+</div>
+{% endif %}
+{% endblock %}
