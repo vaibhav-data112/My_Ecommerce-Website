@@ -86,6 +86,41 @@ def get_product_by_id(product_id):
         conn.close()
 
 
+def search_products(q='', category='', sort='newest', page=1, per_page=12):
+    where_clauses, params = [], []
+    if q:
+        where_clauses.append("LOWER(name) LIKE ?")
+        params.append(f'%{q.lower()}%')
+    if category:
+        where_clauses.append("category = ?")
+        params.append(category)
+
+    where_sql = ("WHERE " + " AND ".join(where_clauses)) if where_clauses else ""
+    order_sql = {
+        'price_asc':  'ORDER BY price ASC',
+        'price_desc': 'ORDER BY price DESC',
+    }.get(sort, 'ORDER BY created_at DESC')
+
+    conn = get_db()
+    try:
+        total = conn.execute(
+            f"SELECT COUNT(*) FROM products {where_sql}", params
+        ).fetchone()[0]
+
+        total_pages = max(1, (total + per_page - 1) // per_page)
+        page = max(1, min(page, total_pages))
+
+        products = conn.execute(
+            f"SELECT * FROM products {where_sql} {order_sql} LIMIT ? OFFSET ?",
+            params + [per_page, (page - 1) * per_page]
+        ).fetchall()
+    finally:
+        conn.close()
+
+    return dict(products=products, total=total, page=page,
+                total_pages=total_pages, per_page=per_page)
+
+
 def migrate_db():
     conn = get_db()
     try:
