@@ -121,6 +121,118 @@ def search_products(q='', category='', sort='newest', page=1, per_page=12):
                 total_pages=total_pages, per_page=per_page)
 
 
+def get_cart_items(user_id):
+    conn = get_db()
+    try:
+        return conn.execute("""
+            SELECT ci.id, ci.product_id, ci.quantity,
+                   p.name, p.price, p.image_url, p.stock,
+                   (p.price * ci.quantity) AS line_total
+            FROM cart_items ci
+            JOIN products p ON p.id = ci.product_id
+            WHERE ci.user_id = ?
+            ORDER BY ci.created_at
+        """, (user_id,)).fetchall()
+    finally:
+        conn.close()
+
+
+def calculate_cart_total(items):
+    return sum(item['line_total'] for item in items)
+
+
+def get_cart_count(user_id):
+    conn = get_db()
+    try:
+        row = conn.execute(
+            "SELECT COALESCE(SUM(quantity), 0) FROM cart_items WHERE user_id = ?",
+            (user_id,)
+        ).fetchone()
+        return int(row[0])
+    finally:
+        conn.close()
+
+
+def add_to_cart(user_id, product_id, qty=1):
+    conn = get_db()
+    try:
+        product = conn.execute(
+            "SELECT stock FROM products WHERE id = ?", (product_id,)
+        ).fetchone()
+        if not product:
+            return (False, 'Product not found')
+
+        stock = product['stock']
+        if stock == 0:
+            return (False, 'This product is out of stock')
+
+        existing = conn.execute(
+            "SELECT id, quantity FROM cart_items WHERE user_id = ? AND product_id = ?",
+            (user_id, product_id)
+        ).fetchone()
+
+        if existing:
+            new_qty = min(existing['quantity'] + qty, stock)
+            capped = new_qty < existing['quantity'] + qty
+            conn.execute(
+                "UPDATE cart_items SET quantity = ? WHERE user_id = ? AND product_id = ?",
+                (new_qty, user_id, product_id)
+            )
+        else:
+            new_qty = min(qty, stock)
+            capped = new_qty < qty
+            conn.execute(
+                "INSERT INTO cart_items (user_id, product_id, quantity) VALUES (?, ?, ?)",
+                (user_id, product_id, new_qty)
+            )
+
+        conn.commit()
+        if capped:
+            return (True, f'Added to cart (quantity capped at {new_qty} due to available stock)')
+        return (True, 'Added to cart!')
+    finally:
+        conn.close()
+
+
+def update_cart_item(user_id, product_id, qty):
+    if qty == 0:
+        remove_cart_item(user_id, product_id)
+        return (True, 'Item removed from cart')
+
+    conn = get_db()
+    try:
+        product = conn.execute(
+            "SELECT stock FROM products WHERE id = ?", (product_id,)
+        ).fetchone()
+        if not product:
+            return (False, 'Product not found')
+
+        new_qty = min(qty, product['stock'])
+        capped = new_qty < qty
+        conn.execute(
+            "UPDATE cart_items SET quantity = ? WHERE user_id = ? AND product_id = ?",
+            (new_qty, user_id, product_id)
+        )
+        conn.commit()
+        if capped:
+            return (True, f'Quantity updated (capped at {new_qty} due to available stock)')
+        return (True, 'Quantity updated')
+    finally:
+        conn.close()
+
+
+def remove_cart_item(user_id, product_id):
+    conn = get_db()
+    try:
+        conn.execute(
+            "DELETE FROM cart_items WHERE user_id = ? AND product_id = ?",
+            (user_id, product_id)
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
 def migrate_db():
     conn = get_db()
     try:

@@ -3,10 +3,12 @@ import os
 from authlib.integrations.flask_client import OAuth
 from dotenv import load_dotenv
 from flask import Flask, redirect, render_template, url_for
+from flask_login import current_user
 
 from auth import auth, init_google_oauth, init_login_manager
+from cart import cart
 from catalog import catalog
-from db import init_db, migrate_db, seed_db
+from db import get_cart_count, init_db, migrate_db, seed_db
 
 load_dotenv()
 
@@ -24,7 +26,14 @@ app.oauth = oauth
 init_google_oauth(oauth)
 
 app.register_blueprint(auth)
+app.register_blueprint(cart)
 app.register_blueprint(catalog)
+
+
+@app.context_processor
+def inject_cart_count():
+    count = get_cart_count(int(current_user.id)) if current_user.is_authenticated else 0
+    return dict(cart_count=count)
 
 
 @app.route('/')

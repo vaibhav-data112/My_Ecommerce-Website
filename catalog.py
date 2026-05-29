@@ -1,4 +1,4 @@
-from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
+from flask import Blueprint, abort, render_template, request
 
 from db import get_all_products, get_product_by_id, search_products
 
@@ -41,12 +41,6 @@ def product_detail(product_id):
         abort(404)
     return render_template('products/detail.html', product=product)
 
-
-@catalog.route('/cart/add', methods=['POST'])
-def cart_add_placeholder():
-    product_id = request.form.get('product_id', '')
-    flash('Shopping cart coming soon!', 'info')
-    return redirect(url_for('catalog.product_detail', product_id=product_id))
 
 
 @catalog.app_errorhandler(404)
