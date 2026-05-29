@@ -1,0 +1,155 @@
+{% extends 'base.html' %}
+{% block title %}Checkout — My Shop{% endblock %}
+
+{% block content %}
+<style>
+    .checkout-title { font-size: 1.6rem; margin-bottom: 1.5rem; }
+    .checkout-grid { display: grid; grid-template-columns: 1fr 380px; gap: 2rem; align-items: start; }
+    @media (max-width: 720px) { .checkout-grid { grid-template-columns: 1fr; } }
+
+    /* Order summary */
+    .summary-card { background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,.07); overflow: hidden; }
+    .summary-card h2 { font-size: 1.1rem; padding: 1rem 1.25rem; border-bottom: 1px solid #eee; background: #f9f9f9; }
+    .order-table { width: 100%; border-collapse: collapse; }
+    .order-table th {
+        background: #f5f5f5; text-align: left; padding: .6rem 1rem;
+        font-size: .78rem; color: #555; text-transform: uppercase; letter-spacing: .05em;
+    }
+    .order-table td { padding: .75rem 1rem; border-top: 1px solid #eee; vertical-align: middle; font-size: .95rem; }
+    .totals-block { padding: .75rem 1rem; border-top: 2px solid #eee; }
+    .totals-row { display: flex; justify-content: space-between; padding: .35rem 0; font-size: .95rem; color: #555; }
+    .totals-row.shipping .shipping-free { color: #27ae60; font-weight: 600; }
+    .totals-row.grand-total { font-size: 1.1rem; font-weight: 700; color: #1a1a2e; border-top: 1px solid #ddd; margin-top: .35rem; padding-top: .6rem; }
+
+    /* Address form */
+    .address-card { background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,.07); padding: 1.5rem; }
+    .address-card h2 { font-size: 1.1rem; margin-bottom: 1.25rem; }
+    .form-group { margin-bottom: 1.1rem; }
+    .form-group label { display: block; font-weight: 600; margin-bottom: .35rem; font-size: .88rem; }
+    .form-group input[type="text"],
+    .form-group input[type="tel"],
+    .form-group textarea {
+        width: 100%; padding: .6rem .8rem; border: 1px solid #ccc;
+        border-radius: 4px; font-size: .95rem; font-family: inherit;
+    }
+    .form-group input:focus, .form-group textarea:focus { outline: none; border-color: #1a1a2e; }
+    .form-group .field-error { color: #c0392b; font-size: .82rem; margin-top: .25rem; }
+    .form-group .input-error { border-color: #e74c3c; }
+    textarea { resize: vertical; min-height: 90px; }
+    .btn-place-order {
+        width: 100%; padding: .75rem; background: #1a1a2e; color: #fff;
+        border: none; border-radius: 4px; font-size: 1rem; font-weight: 600;
+        cursor: pointer; transition: opacity .15s; margin-top: .5rem;
+    }
+    .btn-place-order:hover { opacity: .85; }
+    .btn-place-order:disabled { background: #aaa; cursor: not-allowed; opacity: 1; }
+    .back-link { display: inline-block; margin-bottom: 1.25rem; color: #1a1a2e; font-size: .9rem; text-decoration: none; }
+    .back-link:hover { text-decoration: underline; }
+    .img-placeholder {
+        width: 40px; height: 40px; background: #e8eaf0; border-radius: 4px;
+        display: inline-flex; align-items: center; justify-content: center;
+        font-size: 1.1rem; color: #9ea3b2; font-weight: 700; vertical-align: middle;
+    }
+</style>
+
+<h1 class="checkout-title">Checkout</h1>
+<a class="back-link" href="{{ url_for('cart.view_cart') }}">&larr; Back to cart</a>
+
+<div class="checkout-grid">
+    <!-- Left: order summary -->
+    <div class="summary-card">
+        <h2>Order Summary</h2>
+        <table class="order-table">
+            <thead>
+                <tr>
+                    <th></th>
+                    <th>Product</th>
+                    <th>Unit Price</th>
+                    <th>Qty</th>
+                    <th>Line Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr>
+                    <td>
+                        {% if item['image_url'] %}
+                            <img src="{{ item['image_url'] }}" alt="{{ item['name'] }}"
+                                 style="width:40px;height:40px;object-fit:cover;border-radius:4px;vertical-align:middle;">
+                        {% else %}
+                            <span class="img-placeholder">{{ item['name'][0] }}</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ item['name'] }}</td>
+                    <td>&#8377;{{ "%.2f"|format(item['price']) }}</td>
+                    <td>{{ item['quantity'] }}</td>
+                    <td>&#8377;{{ "%.2f"|format(item['price'] * item['quantity']) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <div class="totals-block">
+            <div class="totals-row">
+                <span>Subtotal</span>
+                <span>&#8377;{{ "%.2f"|format(subtotal) }}</span>
+            </div>
+            <div class="totals-row shipping">
+                <span>Shipping</span>
+                {% if shipping_fee == 0 %}
+                    <span class="shipping-free">Free</span>
+                {% else %}
+                    <span>&#8377;{{ "%.2f"|format(shipping_fee) }}</span>
+                {% endif %}
+            </div>
+            <div class="totals-row grand-total">
+                <span>Total</span>
+                <span>&#8377;{{ "%.2f"|format(total) }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right: address form -->
+    <div class="address-card">
+        <h2>Shipping Details</h2>
+        <form method="post" action="{{ url_for('checkout.checkout_page') }}"
+              onsubmit="this.querySelector('.btn-place-order').disabled=true;">
+
+            <div class="form-group">
+                <label for="shipping_name">Full Name</label>
+                <input type="text" id="shipping_name" name="shipping_name"
+                       value="{{ form.get('shipping_name', '') }}"
+                       class="{{ 'input-error' if errors.get('shipping_name') }}"
+                       placeholder="Jane Doe" required>
+                {% if errors.get('shipping_name') %}
+                    <div class="field-error">{{ errors['shipping_name'] }}</div>
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                <label for="shipping_phone">Phone Number</label>
+                <input type="tel" id="shipping_phone" name="shipping_phone"
+                       value="{{ form.get('shipping_phone', '') }}"
+                       class="{{ 'input-error' if errors.get('shipping_phone') }}"
+                       placeholder="9876543210" required minlength="10">
+                {% if errors.get('shipping_phone') %}
+                    <div class="field-error">{{ errors['shipping_phone'] }}</div>
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                <label for="shipping_address">Delivery Address</label>
+                <textarea id="shipping_address" name="shipping_address"
+                          class="{{ 'input-error' if errors.get('shipping_address') }}"
+                          placeholder="House no., Street, City, State, PIN" required>{{ form.get('shipping_address', '') }}</textarea>
+                {% if errors.get('shipping_address') %}
+                    <div class="field-error">{{ errors['shipping_address'] }}</div>
+                {% endif %}
+            </div>
+
+            <button class="btn-place-order" type="submit">
+                Place Order — &#8377;{{ "%.2f"|format(total) }}
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}
