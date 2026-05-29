@@ -12,6 +12,7 @@ Dependencies in `requirements.txt`:
 - `authlib>=1.3.0` — Google OAuth
 - `python-dotenv>=1.0.0` — `.env` loading
 - `requests>=2.31.0` — HTTP client
+- `razorpay>=1.4.1` — payment gateway
 - `werkzeug` (bundled with Flask) — password hashing via `generate_password_hash` / `check_password_hash`
 - `sqlite3` — Python stdlib database driver; database file is `ecommerce.db` in the project root
 
@@ -25,6 +26,7 @@ python -m pip install -r requirements.txt
 python app.py
 
 # Run acceptance-criteria tests for a feature (uses a temp DB, safe to run anytime)
+python test_order_management.py
 python test_auth.py
 ```
 
@@ -35,21 +37,30 @@ Test files follow the pattern `test_{feature-name}.py` — one per feature.
 SECRET_KEY=<random string>
 GOOGLE_CLIENT_ID=<from Google Cloud Console>
 GOOGLE_CLIENT_SECRET=<from Google Cloud Console>
+RAZORPAY_KEY_ID=<from Razorpay dashboard>
+RAZORPAY_KEY_SECRET=<from Razorpay dashboard>
 ```
 
 ## Architecture
 
 ```
-app.py      — Flask entry point: calls init_db(), migrate_db(), seed_db(), registers blueprints
-db.py       — Database helpers: get_db(), init_db(), migrate_db(), seed_db()
+app.py      — Flask entry point: calls init_db(), migrate_db(), seed_db(), registers all blueprints
+db.py       — Database helpers: get_db(), init_db(), migrate_db(), seed_db(), and all SQL helper functions
 auth.py     — Auth blueprint: signup/login/logout routes, User model, Flask-Login, Google OAuth
+catalog.py  — Product catalog blueprint: list, detail, category/search/sort
+cart.py     — Shopping cart blueprint: add/remove/update items
+checkout.py — Checkout blueprint: shipping form, calls place_order()
+payment.py  — Payment blueprint: Razorpay integration, payment verification
+orders.py   — Order management blueprint: order history and detail pages
 ecommerce.db — SQLite database file (auto-created; not committed)
 templates/  — Jinja2 templates; all pages extend templates/base.html
 ```
 
 **Startup sequence in `app.py`:** `init_db()` → `migrate_db()` → `seed_db()`. Schema changes added after the initial release go in `migrate_db()` (not `init_db()`), using `PRAGMA table_info` to check if a column already exists before `ALTER TABLE`.
 
-**Blueprint pattern:** New features are implemented as Flask Blueprints (see `auth.py`). Each blueprint is created in its own module and registered in `app.py` via `app.register_blueprint(...)`.
+**Blueprint pattern:** Each feature is a Flask Blueprint in its own module, registered in `app.py` via `app.register_blueprint(...)`. Blueprint-local helpers live in the same module; shared DB helpers live in `db.py`.
+
+**`app.py` context processor:** `inject_cart_count()` injects `cart_count` into every template for the nav badge. Add similar processors for other global template variables.
 
 **`db.py` patterns to follow in all future features:**
 - `get_db()` opens `ecommerce.db`, sets `row_factory = sqlite3.Row`, and enables `PRAGMA foreign_keys = ON` on every connection.
@@ -57,7 +68,7 @@ templates/  — Jinja2 templates; all pages extend templates/base.html
 - Passwords are always stored via `generate_password_hash()`; checked via `check_password_hash()`.
 
 **Auth patterns:**
-- Import `login_required` from `auth.py` to protect routes.
+- Import `login_required` from `flask_login` (not from `auth.py`) to protect routes.
 - `current_user` from `flask_login` is available in all Jinja2 templates (injected by Flask-Login) — used in `base.html` for nav state.
 - The `User` class (in `auth.py`) wraps a `sqlite3.Row` and implements `UserMixin`.
 
@@ -72,6 +83,9 @@ Five tables (all created by `init_db()` in `db.py`):
 | `cart_items` | Per-user shopping cart (FK → users, products) |
 | `orders` | Confirmed order header (FK → users) |
 | `order_items` | Line items inside an order — snapshots `product_name` and `unit_price` at purchase time |
+
+The `orders` table has columns added via `migrate_db()` that are not in `init_db()`: `shipping_name`, `shipping_phone`, `subtotal`, `shipping_fee`, `payment_id`, `payment_order_id`.  
+The `order_items` table has `line_total` added the same way.
 
 Seed data (inserted once on first run): 1 demo user (`demo@example.com` / `demo1234`) and 6 products across the fixed category list: Electronics, Clothing, Home, Books, Beauty, Sports, Other.
 
@@ -91,11 +105,11 @@ This project uses **Spec-Driven Development (SDD)**. The full workflow is in `.c
 |----|--------|----------------|
 | 01 | `database-setup` | Database schema — users, products, orders tables ✅ |
 | 02 | `user-auth` | Signup, login, logout, password security, Google OAuth ✅ |
-| 03 | `product-catalog` | Product list + detail page |
-| 04 | `search-filter` | Search bar, category filters, pagination |
-| 05 | `shopping-cart` | Add/remove items, quantity update |
-| 06 | `checkout-flow` | Address, order summary, confirm order |
-| 07 | `payment` | Razorpay / Stripe integration |
-| 08 | `order-management` | Order history, status tracking |
+| 03 | `product-catalog` | Product list + detail page ✅ |
+| 04 | `search-filter` | Search bar, category filters, pagination ✅ |
+| 05 | `shopping-cart` | Add/remove items, quantity update ✅ |
+| 06 | `checkout-flow` | Address, order summary, confirm order ✅ |
+| 07 | `payment` | Razorpay integration ✅ |
+| 08 | `order-management` | Order history, status tracking ✅ |
 | 09 | `admin-dashboard` | Manage products and orders |
 | 10 | `reviews-ratings` | Product reviews and star ratings |

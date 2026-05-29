@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% block title %}Order Not Found — My Shop{% endblock %}
+
+{% block content %}
+<style>
+    .not-found { text-align: center; padding: 4rem 2rem; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,.07); }
+    .not-found h1 { font-size: 1.4rem; color: #1a1a2e; margin-bottom: .75rem; }
+    .not-found p { color: #666; margin-bottom: 1.5rem; }
+</style>
+
+<div class="not-found">
+    <h1>Order Not Found</h1>
+    <p>We couldn't find that order. It may not exist or it doesn't belong to your account.</p>
+    <a class="btn btn-primary" href="{{ url_for('orders.order_history') }}" style="display:inline-block;width:auto;">Back to My Orders</a>
+</div>
+{% endblock %}
