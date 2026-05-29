@@ -294,6 +294,25 @@ def place_order(user_id, shipping_name, shipping_phone, shipping_address):
         conn.close()
 
 
+def get_order_by_id(order_id):
+    conn = get_db()
+    try:
+        return conn.execute("SELECT * FROM orders WHERE id = ?", (order_id,)).fetchone()
+    finally:
+        conn.close()
+
+
+def get_order_items(order_id):
+    conn = get_db()
+    try:
+        return conn.execute(
+            "SELECT * FROM order_items WHERE order_id = ? ORDER BY id",
+            (order_id,)
+        ).fetchall()
+    finally:
+        conn.close()
+
+
 def migrate_db():
     conn = get_db()
     try:
@@ -318,6 +337,14 @@ def migrate_db():
         oi_cols = [r[1] for r in conn.execute("PRAGMA table_info(order_items)").fetchall()]
         if 'line_total' not in oi_cols:
             conn.execute('ALTER TABLE order_items ADD COLUMN line_total REAL NOT NULL DEFAULT 0')
+
+        orders_cols = [r[1] for r in conn.execute("PRAGMA table_info(orders)").fetchall()]
+        for col, ddl in [
+            ('payment_id',       'ALTER TABLE orders ADD COLUMN payment_id TEXT'),
+            ('payment_order_id', 'ALTER TABLE orders ADD COLUMN payment_order_id TEXT'),
+        ]:
+            if col not in orders_cols:
+                conn.execute(ddl)
 
         conn.commit()
     finally:

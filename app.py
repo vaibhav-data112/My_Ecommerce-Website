@@ -10,6 +10,7 @@ from cart import cart
 from catalog import catalog
 from checkout import checkout
 from db import get_cart_count, init_db, migrate_db, seed_db
+from payment import payment
 
 load_dotenv()
 
@@ -30,6 +31,7 @@ app.register_blueprint(auth)
 app.register_blueprint(cart)
 app.register_blueprint(catalog)
 app.register_blueprint(checkout)
+app.register_blueprint(payment)
 
 
 @app.context_processor
