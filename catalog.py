@@ -1,14 +1,37 @@
 from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
 
-from db import get_all_products, get_product_by_id
+from db import get_all_products, get_product_by_id, search_products
 
 catalog = Blueprint('catalog', __name__)
+
+CATEGORIES = ['Electronics', 'Clothing', 'Home', 'Books', 'Beauty', 'Sports', 'Other']
+VALID_SORTS = {'price_asc', 'price_desc', 'newest'}
 
 
 @catalog.route('/products')
 def product_list():
-    products = get_all_products()
-    return render_template('products/list.html', products=products)
+    q        = request.args.get('q', '').strip()
+    category = request.args.get('category', '')
+    sort     = request.args.get('sort', 'newest')
+    try:
+        page = int(request.args.get('page', 1))
+    except (ValueError, TypeError):
+        page = 1
+
+    if sort not in VALID_SORTS:
+        sort = 'newest'
+    if category not in CATEGORIES:
+        category = ''
+
+    result = search_products(q=q, category=category, sort=sort, page=page)
+    return render_template('products/list.html',
+        products=result['products'],
+        total=result['total'],
+        page=result['page'],
+        total_pages=result['total_pages'],
+        q=q, category=category, sort=sort,
+        categories=CATEGORIES,
+    )
 
 
 @catalog.route('/products/<int:product_id>')
