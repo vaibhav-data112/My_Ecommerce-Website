@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+{% block title %}Pay for Order #{{ order['id'] }} — My Shop{% endblock %}
+
+{% block content %}
+<style>
+    .pay-title { font-size: 1.6rem; margin-bottom: 1.5rem; }
+    .pay-grid { display: grid; grid-template-columns: 1fr 360px; gap: 2rem; align-items: start; }
+    @media (max-width: 720px) { .pay-grid { grid-template-columns: 1fr; } }
+
+    .summary-card { background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,.07); overflow: hidden; }
+    .summary-card h2 { font-size: 1.1rem; padding: 1rem 1.25rem; border-bottom: 1px solid #eee; background: #f9f9f9; }
+    .summary-body { padding: 1.25rem; }
+    .meta-row { display: flex; justify-content: space-between; padding: .4rem 0; font-size: .95rem; color: #555; border-bottom: 1px solid #f0f0f0; }
+    .meta-row:last-child { border-bottom: none; }
+    .meta-row.total { font-size: 1.1rem; font-weight: 700; color: #1a1a2e; padding-top: .75rem; }
+
+    .pay-card { background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,.07); padding: 1.75rem; }
+    .pay-card h2 { font-size: 1.1rem; margin-bottom: 1.25rem; }
+    .amount-display { font-size: 2rem; font-weight: 700; color: #1a1a2e; margin: 1rem 0; }
+    .amount-display small { font-size: 1rem; font-weight: 400; color: #777; }
+
+    .btn-pay {
+        width: 100%; padding: .85rem; background: #1a1a2e; color: #fff;
+        border: none; border-radius: 6px; font-size: 1.05rem; font-weight: 700;
+        cursor: pointer; transition: opacity .15s; margin-top: .5rem;
+    }
+    .btn-pay:hover { opacity: .85; }
+    .btn-pay:disabled { background: #aaa; cursor: not-allowed; opacity: 1; }
+
+    .cancel-link { display: block; text-align: center; margin-top: 1rem; color: #888; font-size: .88rem; text-decoration: none; }
+    .cancel-link:hover { color: #555; text-decoration: underline; }
+
+    .secure-note { display: flex; align-items: center; gap: .5rem; font-size: .8rem; color: #888; margin-top: 1.25rem; }
+    .back-link { display: inline-block; margin-bottom: 1.25rem; color: #1a1a2e; font-size: .9rem; text-decoration: none; }
+    .back-link:hover { text-decoration: underline; }
+</style>
+
+<h1 class="pay-title">Complete Payment</h1>
+<a class="back-link" href="{{ url_for('catalog.product_list') }}">&larr; Continue Shopping</a>
+
+<div class="pay-grid">
+    <div class="summary-card">
+        <h2>Order Summary</h2>
+        <div class="summary-body">
+            <div class="meta-row"><span>Order ID</span><span>#{{ order['id'] }}</span></div>
+            <div class="meta-row"><span>Ship to</span><span>{{ order['shipping_name'] }}</span></div>
+            <div class="meta-row"><span>Address</span><span style="text-align:right;max-width:60%;">{{ order['shipping_address'] }}</span></div>
+            {% if order['subtotal'] is defined and order['subtotal'] is not none %}
+            <div class="meta-row"><span>Subtotal</span><span>&#8377;{{ "%.2f"|format(order['subtotal']) }}</span></div>
+            <div class="meta-row">
+                <span>Shipping</span>
+                {% if order['shipping_fee'] == 0 %}<span style="color:#27ae60;font-weight:600;">Free</span>
+                {% else %}<span>&#8377;{{ "%.2f"|format(order['shipping_fee']) }}</span>{% endif %}
+            </div>
+            {% endif %}
+            <div class="meta-row total"><span>Total</span><span>&#8377;{{ "%.2f"|format(order['total']) }}</span></div>
+        </div>
+    </div>
+
+    <div class="pay-card">
+        <h2>Pay Securely</h2>
+        <div class="amount-display">
+            &#8377;{{ "%.2f"|format(order['total']) }}
+            <small>INR</small>
+        </div>
+
+        <form id="verify-form" method="POST" action="{{ url_for('payment.verify_payment') }}">
+            <input type="hidden" id="rz_order_id"   name="razorpay_order_id"   value="">
+            <input type="hidden" id="rz_payment_id" name="razorpay_payment_id" value="">
+            <input type="hidden" id="rz_signature"  name="razorpay_signature"  value="">
+        </form>
+
+        <button id="pay-btn" class="btn-pay">
+            Pay &#8377;{{ "%.2f"|format(order['total']) }}
+        </button>
+
+        <a class="cancel-link" href="{{ url_for('catalog.product_list') }}">Cancel &mdash; I'll pay later</a>
+
+        <div class="secure-note">
+            &#128274; Payments are processed securely by Razorpay. We never store your card details.
+        </div>
+    </div>
+</div>
+
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script>
+    var options = {
+        key: "{{ key_id }}",
+        amount: "{{ amount_paisa }}",
+        currency: "INR",
+        name: "My Shop",
+        description: "Order #{{ order['id'] }}",
+        order_id: "{{ rz_order_id }}",
+        handler: function(response) {
+            document.getElementById('rz_order_id').value   = response.razorpay_order_id;
+            document.getElementById('rz_payment_id').value = response.razorpay_payment_id;
+            document.getElementById('rz_signature').value  = response.razorpay_signature;
+            document.getElementById('verify-form').submit();
+        },
+        prefill: {
+            name: "{{ order['shipping_name'] }}",
+            contact: "{{ order['shipping_phone'] }}"
+        },
+        theme: { color: "#1a1a2e" },
+        modal: {
+            ondismiss: function() {
+                document.getElementById('pay-btn').disabled = false;
+            }
+        }
+    };
+
+    document.getElementById('pay-btn').addEventListener('click', function() {
+        this.disabled = true;
+        var rzp = new Razorpay(options);
+        rzp.open();
+    });
+</script>
+{% endblock %}
