@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from flask import Flask, redirect, render_template, url_for
 from flask_login import current_user
 
+from admin import admin as admin_blueprint
 from auth import auth, init_google_oauth, init_login_manager
 from cart import cart
 from catalog import catalog
@@ -28,6 +29,7 @@ oauth = OAuth(app)
 app.oauth = oauth
 init_google_oauth(oauth)
 
+app.register_blueprint(admin_blueprint)
 app.register_blueprint(auth)
 app.register_blueprint(cart)
 app.register_blueprint(catalog)

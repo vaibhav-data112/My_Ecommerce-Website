@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+{% block title %}{{ action }} Product — Admin{% endblock %}
+
+{% block content %}
+<style>
+    .page-heading { font-size: 1.5rem; font-weight: 700; margin-bottom: 1.5rem; color: #1a1a2e; }
+    .back-link { color: #1a1a2e; text-decoration: none; font-size: .9rem; }
+    .back-link:hover { text-decoration: underline; }
+    .form-group select {
+        width: 100%; padding: .6rem .8rem; border: 1px solid #ccc;
+        border-radius: 4px; font-size: 1rem; background: #fff;
+    }
+    .form-group select:focus { outline: none; border-color: #1a1a2e; }
+    .form-group textarea {
+        width: 100%; padding: .6rem .8rem; border: 1px solid #ccc;
+        border-radius: 4px; font-size: 1rem; resize: vertical; min-height: 90px;
+    }
+    .form-group textarea:focus { outline: none; border-color: #1a1a2e; }
+    .form-group input[type="number"] {
+        width: 100%; padding: .6rem .8rem; border: 1px solid #ccc;
+        border-radius: 4px; font-size: 1rem;
+    }
+    .form-group input[type="number"]:focus { outline: none; border-color: #1a1a2e; }
+    .form-row { display: flex; gap: 1rem; }
+    .form-row .form-group { flex: 1; }
+</style>
+
+<a class="back-link" href="{{ url_for('admin.products') }}">&larr; Back to Products</a>
+<h1 class="page-heading" style="margin-top:.6rem;">{{ action }} Product</h1>
+
+<div class="card" style="max-width:600px;">
+    <form method="post">
+        <div class="form-group">
+            <label for="name">Product Name *</label>
+            <input type="text" id="name" name="name" required
+                   value="{{ form.get('name', '') if form is mapping else form['name'] }}">
+        </div>
+
+        <div class="form-group">
+            <label for="description">Description</label>
+            <textarea id="description" name="description">{{ form.get('description', '') if form is mapping else form['description'] }}</textarea>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="price">Price (₹) *</label>
+                <input type="number" id="price" name="price" min="0" step="0.01" required
+                       value="{{ form.get('price', '') if form is mapping else form['price'] }}">
+            </div>
+            <div class="form-group">
+                <label for="stock">Stock *</label>
+                <input type="number" id="stock" name="stock" min="0" step="1" required
+                       value="{{ form.get('stock', '') if form is mapping else form['stock'] }}">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="category">Category *</label>
+            <select id="category" name="category" required>
+                <option value="">-- Select category --</option>
+                {% for cat in categories %}
+                <option value="{{ cat }}"
+                    {% if (form.get('category', '') if form is mapping else form['category']) == cat %}selected{% endif %}>
+                    {{ cat }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="image_url">Image URL</label>
+            <input type="text" id="image_url" name="image_url"
+                   value="{{ form.get('image_url', '') if form is mapping else (form['image_url'] or '') }}">
+        </div>
+
+        <button class="btn btn-primary" type="submit" style="width:auto;padding:.65rem 2rem;">
+            {{ action }} Product
+        </button>
+    </form>
+</div>
+{% endblock %}

@@ -61,6 +61,9 @@
         {% if current_user.is_authenticated %}
             <a href="{{ url_for('orders.order_history') }}" style="color:#fff;text-decoration:none;margin-left:1rem;">My Orders</a>
             <a href="{{ url_for('cart.view_cart') }}" style="color:#fff;text-decoration:none;margin-left:1rem;">Cart{% if cart_count > 0 %} ({{ cart_count }}){% endif %}</a>
+            {% if current_user.is_admin %}
+                <a href="{{ url_for('admin.dashboard') }}" style="color:#f0b429;text-decoration:none;margin-left:1rem;font-weight:700;">Admin</a>
+            {% endif %}
             <span>{{ current_user.name }}</span>
             <form method="post" action="/logout" style="display:inline">
                 <button type="submit">Logout</button>
