@@ -233,6 +233,67 @@ def remove_cart_item(user_id, product_id):
         conn.close()
 
 
+SHIPPING_FEE = 40.0  # flat ₹40; free when subtotal >= ₹500
+
+
+def calculate_totals(items):
+    subtotal = round(sum(item['price'] * item['quantity'] for item in items), 2)
+    shipping_fee = 0.0 if subtotal >= 500 else SHIPPING_FEE
+    total = round(subtotal + shipping_fee, 2)
+    return {'subtotal': subtotal, 'shipping_fee': shipping_fee, 'total': total}
+
+
+def place_order(user_id, shipping_name, shipping_phone, shipping_address):
+    conn = get_db()
+    try:
+        items = conn.execute("""
+            SELECT ci.product_id, ci.quantity, p.name, p.price, p.stock
+            FROM cart_items ci JOIN products p ON p.id = ci.product_id
+            WHERE ci.user_id = ?
+            ORDER BY ci.created_at
+        """, (user_id,)).fetchall()
+
+        if not items:
+            return False, 'Your cart is empty', None
+
+        for item in items:
+            if item['stock'] < item['quantity']:
+                return False, f"'{item['name']}' is out of stock or has insufficient quantity", None
+
+        totals = calculate_totals(items)
+
+        conn.execute("BEGIN")
+        cursor = conn.execute("""
+            INSERT INTO orders
+              (user_id, status, subtotal, shipping_fee, total,
+               shipping_name, shipping_phone, shipping_address)
+            VALUES (?, 'pending', ?, ?, ?, ?, ?, ?)
+        """, (user_id, totals['subtotal'], totals['shipping_fee'], totals['total'],
+              shipping_name, shipping_phone, shipping_address))
+        order_id = cursor.lastrowid
+
+        for item in items:
+            line_total = round(item['price'] * item['quantity'], 2)
+            conn.execute("""
+                INSERT INTO order_items
+                  (order_id, product_id, product_name, unit_price, quantity, line_total)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (order_id, item['product_id'], item['name'],
+                  item['price'], item['quantity'], line_total))
+
+        conn.execute("DELETE FROM cart_items WHERE user_id = ?", (user_id,))
+        conn.commit()
+        return True, 'Order placed successfully', order_id
+    except Exception:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        return False, 'Could not place order, please try again', None
+    finally:
+        conn.close()
+
+
 def migrate_db():
     conn = get_db()
     try:
@@ -243,7 +304,22 @@ def migrate_db():
                 "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google_id ON users (google_id)"
                 " WHERE google_id IS NOT NULL"
             )
-            conn.commit()
+
+        orders_cols = [r[1] for r in conn.execute("PRAGMA table_info(orders)").fetchall()]
+        for col, ddl in [
+            ('shipping_name',  "ALTER TABLE orders ADD COLUMN shipping_name TEXT NOT NULL DEFAULT ''"),
+            ('shipping_phone', "ALTER TABLE orders ADD COLUMN shipping_phone TEXT NOT NULL DEFAULT ''"),
+            ('subtotal',       'ALTER TABLE orders ADD COLUMN subtotal REAL NOT NULL DEFAULT 0'),
+            ('shipping_fee',   'ALTER TABLE orders ADD COLUMN shipping_fee REAL NOT NULL DEFAULT 0'),
+        ]:
+            if col not in orders_cols:
+                conn.execute(ddl)
+
+        oi_cols = [r[1] for r in conn.execute("PRAGMA table_info(order_items)").fetchall()]
+        if 'line_total' not in oi_cols:
+            conn.execute('ALTER TABLE order_items ADD COLUMN line_total REAL NOT NULL DEFAULT 0')
+
+        conn.commit()
     finally:
         conn.close()
 

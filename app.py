@@ -8,6 +8,7 @@ from flask_login import current_user
 from auth import auth, init_google_oauth, init_login_manager
 from cart import cart
 from catalog import catalog
+from checkout import checkout
 from db import get_cart_count, init_db, migrate_db, seed_db
 
 load_dotenv()
@@ -28,6 +29,7 @@ init_google_oauth(oauth)
 app.register_blueprint(auth)
 app.register_blueprint(cart)
 app.register_blueprint(catalog)
+app.register_blueprint(checkout)
 
 
 @app.context_processor

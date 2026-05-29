@@ -96,7 +96,7 @@
 <div class="cart-footer">
     <span class="subtotal-label">Subtotal:</span>
     <span class="subtotal-value">&#8377;{{ "%.2f"|format(subtotal) }}</span>
-    <a class="btn-checkout" href="#">Proceed to Checkout</a>
+    <a class="btn-checkout" href="{{ url_for('checkout.checkout_page') }}">Proceed to Checkout</a>
 </div>
 
 {% else %}
