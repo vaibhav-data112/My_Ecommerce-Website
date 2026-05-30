@@ -23,6 +23,7 @@ app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-change-in-production')
 init_db()
 migrate_db()
 seed_db()
+os.makedirs(os.path.join('static', 'uploads', 'products'), exist_ok=True)
 
 init_login_manager(app)
 

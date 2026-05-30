@@ -1,7 +1,10 @@
+import os
+import uuid
 from functools import wraps
 
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user
+from werkzeug.utils import secure_filename
 
 from catalog import CATEGORIES
 from db import (
@@ -12,6 +15,9 @@ from db import (
 admin = Blueprint('admin', __name__, url_prefix='/admin')
 
 ALLOWED_STATUSES = ['paid', 'shipped', 'delivered', 'cancelled']
+UPLOAD_FOLDER = os.path.join('static', 'uploads', 'products')
+ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png', 'webp'}
+MAX_FILE_BYTES = 5 * 1024 * 1024
 
 
 def admin_required(f):
@@ -24,6 +30,25 @@ def admin_required(f):
             return redirect(url_for('catalog.product_list'))
         return f(*args, **kwargs)
     return decorated
+
+
+def _save_uploaded_image():
+    """Validate and save an uploaded image file. Returns (path, error)."""
+    file = request.files.get('image_file')
+    if not file or not file.filename:
+        return None, None
+    ext = file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else ''
+    if ext not in ALLOWED_EXTENSIONS:
+        return None, f'Invalid file type. Allowed types: jpg, jpeg, png, webp.'
+    data = file.read()
+    if len(data) > MAX_FILE_BYTES:
+        return None, 'File too large. Maximum size is 5 MB.'
+    safe_name = secure_filename(file.filename)
+    unique_name = f'{uuid.uuid4().hex}_{safe_name}'
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+    with open(os.path.join(UPLOAD_FOLDER, unique_name), 'wb') as f:
+        f.write(data)
+    return f'uploads/products/{unique_name}', None
 
 
 def _validate_product_form(form):
@@ -53,6 +78,13 @@ def _validate_product_form(form):
                     error = 'Stock must be 0 or greater.'
             except (ValueError, TypeError):
                 error = 'Stock must be a whole number.'
+
+    if error is None:
+        uploaded_path, upload_error = _save_uploaded_image()
+        if upload_error:
+            error = upload_error
+        elif uploaded_path:
+            image_url = uploaded_path
 
     return error, name, description, price, stock, category, image_url
 
