@@ -13,6 +13,7 @@ from checkout import checkout
 from db import get_cart_count, init_db, migrate_db, seed_db
 from orders import orders
 from payment import payment
+from reviews import reviews
 
 load_dotenv()
 
@@ -36,6 +37,7 @@ app.register_blueprint(catalog)
 app.register_blueprint(checkout)
 app.register_blueprint(orders)
 app.register_blueprint(payment)
+app.register_blueprint(reviews)
 
 
 @app.context_processor
