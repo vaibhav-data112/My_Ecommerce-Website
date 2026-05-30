@@ -34,6 +34,8 @@
     }
     .product-price { color: #1a1a2e; font-weight: 700; font-size: 1rem; }
     .product-category { font-size: .75rem; color: #888; margin-top: .25rem; }
+    .product-rating { color: #f39c12; font-size: .82rem; margin: .1rem 0 0; }
+    .product-rating .rating-count { color: #aaa; font-size: .76rem; }
     .empty-state { text-align: center; padding: 4rem 0; color: #888; font-size: 1.1rem; }
 
     /* ── search & filter controls ── */
@@ -148,6 +150,10 @@
                 <div class="card-body">
                     <p class="product-name">{{ p['name'] }}</p>
                     <p class="product-price">&#8377;{{ "%.2f"|format(p['price']) }}</p>
+                    {% set r = ratings.get(p['id']) %}
+                    {% if r %}
+                    <p class="product-rating">★ {{ r.avg }} <span class="rating-count">({{ r.count }})</span></p>
+                    {% endif %}
                     <p class="product-category">{{ p['category'] }}</p>
                 </div>
             </a>

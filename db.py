@@ -65,6 +65,18 @@ def init_db():
                 FOREIGN KEY (order_id)   REFERENCES orders(id),
                 FOREIGN KEY (product_id) REFERENCES products(id)
             );
+
+            CREATE TABLE IF NOT EXISTS reviews (
+                id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                product_id INTEGER NOT NULL,
+                user_id    INTEGER NOT NULL,
+                rating     INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
+                comment    TEXT,
+                created_at TEXT    DEFAULT (datetime('now')),
+                FOREIGN KEY (product_id) REFERENCES products(id),
+                FOREIGN KEY (user_id)    REFERENCES users(id),
+                UNIQUE (product_id, user_id)
+            );
         """)
         conn.commit()
     finally:
@@ -385,6 +397,88 @@ def seed_db():
             products,
         )
         conn.commit()
+    finally:
+        conn.close()
+
+
+# ---------------------------------------------------------------------------
+# Reviews helpers
+# ---------------------------------------------------------------------------
+
+def get_product_reviews(product_id):
+    conn = get_db()
+    try:
+        return conn.execute("""
+            SELECT r.id, r.rating, r.comment, r.created_at,
+                   u.name AS reviewer_name
+            FROM reviews r
+            JOIN users u ON r.user_id = u.id
+            WHERE r.product_id = ?
+            ORDER BY r.created_at DESC
+        """, (product_id,)).fetchall()
+    finally:
+        conn.close()
+
+
+def get_average_rating(product_id):
+    conn = get_db()
+    try:
+        row = conn.execute(
+            "SELECT AVG(rating) AS avg, COUNT(*) AS count FROM reviews WHERE product_id = ?",
+            (product_id,)
+        ).fetchone()
+        avg = round(row['avg'], 1) if row['avg'] is not None else None
+        return {'avg': avg, 'count': row['count']}
+    finally:
+        conn.close()
+
+
+def get_all_avg_ratings():
+    conn = get_db()
+    try:
+        rows = conn.execute(
+            "SELECT product_id, AVG(rating) AS avg, COUNT(*) AS count FROM reviews GROUP BY product_id"
+        ).fetchall()
+        return {r['product_id']: {'avg': round(r['avg'], 1), 'count': r['count']} for r in rows}
+    finally:
+        conn.close()
+
+
+def can_user_review(user_id, product_id):
+    conn = get_db()
+    try:
+        purchased = conn.execute("""
+            SELECT 1 FROM order_items oi
+            JOIN orders o ON oi.order_id = o.id
+            WHERE o.user_id = ? AND oi.product_id = ? AND o.status = 'paid'
+            LIMIT 1
+        """, (user_id, product_id)).fetchone()
+        if not purchased:
+            return False
+        reviewed = conn.execute(
+            "SELECT 1 FROM reviews WHERE user_id = ? AND product_id = ?",
+            (user_id, product_id)
+        ).fetchone()
+        return reviewed is None
+    finally:
+        conn.close()
+
+
+def get_user_review(user_id, product_id):
+    conn = get_db()
+    try:
+        return conn.execute(
+            "SELECT * FROM reviews WHERE user_id = ? AND product_id = ?",
+            (user_id, product_id)
+        ).fetchone()
+    finally:
+        conn.close()
+
+
+def get_review_by_id(review_id):
+    conn = get_db()
+    try:
+        return conn.execute("SELECT * FROM reviews WHERE id = ?", (review_id,)).fetchone()
     finally:
         conn.close()
 
