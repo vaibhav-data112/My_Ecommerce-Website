@@ -1,81 +1,70 @@
 {% extends 'base.html' %}
-{% block title %}{{ product['name'] }} — My Shop{% endblock %}
+{% block title %}{{ product['name'] }} — Karvii{% endblock %}
 
 {% block content %}
-<style>
-    .detail-wrap { display: flex; flex-wrap: wrap; gap: 2rem; }
-    .detail-image { flex: 1; min-width: 280px; }
-    .detail-image img, .detail-image .img-placeholder {
-        width: 100%; height: 360px; object-fit: cover;
-        border-radius: 8px; display: block;
-    }
-    .detail-image .img-placeholder {
-        background: #e8eaf0; display: flex; align-items: center;
-        justify-content: center; font-size: 5rem; color: #9ea3b2;
-        font-weight: 700; text-transform: uppercase; border-radius: 8px;
-    }
-    .detail-info { flex: 2; min-width: 280px; }
-    .category-badge {
-        display: inline-block; background: #eef0f8; color: #555;
-        font-size: .78rem; font-weight: 600; padding: .25rem .65rem;
-        border-radius: 20px; margin-bottom: .75rem; text-transform: uppercase; letter-spacing: .04em;
-    }
-    .detail-info h1 { font-size: 1.7rem; margin-bottom: .5rem; line-height: 1.25; }
-    .detail-price { font-size: 1.8rem; font-weight: 700; color: #1a1a2e; margin-bottom: 1rem; }
-    .detail-desc { color: #555; line-height: 1.7; margin-bottom: 1.25rem; }
-    .stock-in { color: #27ae60; font-weight: 600; font-size: .9rem; margin-bottom: 1.25rem; }
-    .stock-out {
-        display: inline-block; background: #fde8e8; color: #c0392b;
-        font-weight: 700; padding: .35rem .85rem; border-radius: 4px;
-        font-size: .9rem; margin-bottom: 1.25rem;
-    }
-    .add-cart-form { margin-bottom: 1.25rem; }
-    .back-link { display: inline-block; color: #555; text-decoration: none; font-size: .9rem; }
-    .back-link:hover { color: #1a1a2e; text-decoration: underline; }
-</style>
 
 <div class="detail-wrap">
-    <div class="detail-image">
-        {% if product['image_url'] %}
-            {% if product['image_url'].startswith('http') %}
-                <img src="{{ product['image_url'] }}" alt="{{ product['name'] }}">
-            {% else %}
-                <img src="{{ url_for('static', filename=product['image_url']) }}" alt="{{ product['name'] }}">
-            {% endif %}
-        {% else %}
-            <div class="img-placeholder">{{ product['category'][0] }}</div>
-        {% endif %}
-    </div>
 
-    <div class="detail-info">
-        <span class="category-badge">{{ product['category'] }}</span>
-        <h1>{{ product['name'] }}</h1>
-        <p class="detail-price">&#8377;{{ "%.2f"|format(product['price']) }}</p>
+  {# ── Image ── #}
+  <div class="detail-image">
+    {% if product['image_url'] %}
+      {% if product['image_url'].startswith('http') %}
+        <img src="{{ product['image_url'] }}" alt="{{ product['name'] }}">
+      {% else %}
+        <img src="{{ url_for('static', filename=product['image_url']) }}" alt="{{ product['name'] }}">
+      {% endif %}
+    {% else %}
+      <div class="img-placeholder">{{ product['category'][0] }}</div>
+    {% endif %}
+  </div>
 
-        {% if product['description'] %}
-            <p class="detail-desc">{{ product['description'] }}</p>
-        {% endif %}
+  {# ── Info panel ── #}
+  <div class="detail-info">
+    <span class="category-badge">{{ product['category'] }}</span>
+    <h1>{{ product['name'] }}</h1>
 
-        {% if product['stock'] > 0 %}
-            <p class="stock-in">&#10003; In stock ({{ product['stock'] }} available)</p>
-            <div class="add-cart-form">
-                <form method="post" action="{{ url_for('cart.add_to_cart') }}">
-                    <input type="hidden" name="product_id" value="{{ product['id'] }}">
-                    <label for="qty" style="font-weight:600;font-size:.9rem;">Qty:</label>
-                    <input type="number" id="qty" name="quantity" value="1"
-                           min="1" max="{{ product['stock'] }}"
-                           style="width:4rem;padding:.3rem .5rem;border:1px solid #ccc;border-radius:4px;margin:0 .5rem;">
-                    <button type="submit" class="btn btn-primary" style="width:auto;">Add to Cart</button>
-                </form>
-            </div>
-        {% else %}
-            <span class="stock-out">Out of Stock</span><br><br>
-            <span class="btn-disabled">Out of Stock</span>
-        {% endif %}
+    {% if avg_rating %}
+      <div class="avg-rating mb-3">
+        <span class="avg-stars">
+          {%- for i in range(1, 6) -%}{{ '★' if i <= (avg_rating | round | int) else '☆' }}{%- endfor -%}
+        </span>
+        <span class="avg-value">{{ avg_rating }}</span>
+        <span class="avg-count">({{ review_count }} review{{ 's' if review_count != 1 }})</span>
+      </div>
+    {% endif %}
 
-        <a class="back-link" href="{{ url_for('catalog.product_list') }}">&#8592; Back to all products</a>
-    </div>
+    <p class="detail-price">&#8377;{{ "%.2f"|format(product['price']) }}</p>
+
+    {% if product['description'] %}
+      <p class="detail-desc">{{ product['description'] }}</p>
+    {% endif %}
+
+    {% if product['stock'] > 0 %}
+      <p class="stock-in">&#10003; In stock &mdash; {{ product['stock'] }} available</p>
+
+      <form class="add-cart-form" method="post" action="{{ url_for('cart.add_to_cart') }}">
+        <input type="hidden" name="product_id" value="{{ product['id'] }}">
+        <div class="qty-row">
+          <label for="qty">Qty:</label>
+          <input class="qty-input" type="number" id="qty" name="quantity"
+                 value="1" min="1" max="{{ product['stock'] }}">
+        </div>
+        <div class="detail-actions">
+          <button type="submit" class="btn btn-cart">Add to Cart</button>
+          <a class="btn btn-buy" href="{{ url_for('checkout.checkout_page') }}">Buy Now</a>
+        </div>
+      </form>
+
+    {% else %}
+      <span class="stock-out">Out of Stock</span><br>
+      <span class="btn-disabled">Out of Stock</span>
+    {% endif %}
+
+    <a class="back-link" href="{{ url_for('catalog.product_list') }}">&#8592; Back to all products</a>
+  </div>
+
 </div>
 
 {% include 'products/reviews_section.html' %}
+
 {% endblock %}

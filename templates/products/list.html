@@ -1,194 +1,110 @@
 {% extends 'base.html' %}
-{% block title %}Shop — My Shop{% endblock %}
+{% block title %}Shop — Karvii{% endblock %}
 
 {% block content %}
-<style>
-    /* ── existing card styles ── */
-    .product-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-        gap: 1.25rem;
-    }
-    .product-card {
-        background: #fff; border-radius: 8px; overflow: hidden;
-        box-shadow: 0 2px 8px rgba(0,0,0,.07); text-decoration: none; color: inherit;
-        transition: box-shadow .2s, transform .2s; display: block; position: relative;
-    }
-    .product-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.14); transform: translateY(-2px); }
-    .product-card img, .img-placeholder {
-        width: 100%; height: 180px; object-fit: cover; display: block;
-    }
-    .img-placeholder {
-        background: #e8eaf0; display: flex; align-items: center; justify-content: center;
-        font-size: 3rem; color: #9ea3b2; font-weight: 700; text-transform: uppercase;
-    }
-    .badge-oos {
-        position: absolute; top: .6rem; right: .6rem;
-        background: #e74c3c; color: #fff; font-size: .7rem;
-        font-weight: 700; padding: .2rem .5rem; border-radius: 3px; letter-spacing: .03em;
-    }
-    .card-body { padding: .85rem 1rem; }
-    .product-name {
-        font-weight: 600; font-size: .95rem; margin-bottom: .3rem;
-        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    }
-    .product-price { color: #1a1a2e; font-weight: 700; font-size: 1rem; }
-    .product-category { font-size: .75rem; color: #888; margin-top: .25rem; }
-    .product-rating { color: #f39c12; font-size: .82rem; margin: .1rem 0 0; }
-    .product-rating .rating-count { color: #aaa; font-size: .76rem; }
-    .empty-state { text-align: center; padding: 4rem 0; color: #888; font-size: 1.1rem; }
-
-    /* ── search & filter controls ── */
-    .search-form {
-        display: flex; gap: .5rem; align-items: center; margin-bottom: 1rem;
-    }
-    .search-form input[type="text"] {
-        flex: 1; padding: .5rem .75rem; border: 1px solid #ccc;
-        border-radius: 6px; font-size: .95rem;
-    }
-    .search-form button {
-        padding: .5rem 1rem; background: #1a1a2e; color: #fff;
-        border: none; border-radius: 6px; cursor: pointer; font-size: .95rem;
-    }
-    .search-form button:hover { background: #2d2d5e; }
-    .clear-link { font-size: .85rem; color: #e74c3c; white-space: nowrap; }
-
-    .controls-row {
-        display: flex; align-items: center; justify-content: space-between;
-        flex-wrap: wrap; gap: .5rem; margin-bottom: 1.25rem;
-    }
-    .category-filters { display: flex; flex-wrap: wrap; gap: .4rem; }
-    .cat-btn {
-        padding: .3rem .75rem; border-radius: 20px; font-size: .8rem; font-weight: 600;
-        border: 1px solid #ccc; text-decoration: none; color: #555; background: #fff;
-        transition: background .15s, color .15s;
-    }
-    .cat-btn:hover { background: #1a1a2e; color: #fff; border-color: #1a1a2e; }
-    .cat-btn.active { background: #1a1a2e; color: #fff; border-color: #1a1a2e; }
-
-    .sort-form select {
-        padding: .35rem .65rem; border: 1px solid #ccc; border-radius: 6px;
-        font-size: .85rem; cursor: pointer;
-    }
-
-    .page-header {
-        display: flex; align-items: baseline; justify-content: space-between;
-        margin-bottom: 1rem;
-    }
-    .page-header h1 { font-size: 1.6rem; }
-    .product-count { color: #888; font-size: .9rem; }
-
-    /* ── pagination ── */
-    .pagination {
-        display: flex; justify-content: center; align-items: center;
-        gap: .35rem; margin-top: 2rem;
-    }
-    .pagination a, .pagination span {
-        display: inline-block; padding: .35rem .65rem;
-        border: 1px solid #ccc; border-radius: 5px; font-size: .875rem;
-        text-decoration: none; color: #333;
-    }
-    .pagination a:hover { background: #f0f0f5; }
-    .pagination a.active { background: #1a1a2e; color: #fff; border-color: #1a1a2e; font-weight: 700; }
-    .pagination span { color: #aaa; cursor: default; }
-</style>
 
 <div class="page-header">
-    <h1>{% if q or category %}Search Results{% else %}All Products{% endif %}</h1>
-    <span class="product-count">
-        {{ total }} item{{ 's' if total != 1 }}
-        {% if total_pages > 1 %} &mdash; page {{ page }} of {{ total_pages }}{% endif %}
-    </span>
+  <h1>{% if q or category %}Search Results{% else %}All Products{% endif %}</h1>
+  <span class="product-count">
+    {{ total }} item{{ 's' if total != 1 }}
+    {% if total_pages > 1 %} &mdash; page {{ page }} of {{ total_pages }}{% endif %}
+  </span>
 </div>
 
 {# ── Search bar ── #}
 <form class="search-form" method="get" action="{{ url_for('catalog.product_list') }}">
-    <input type="hidden" name="category" value="{{ category }}">
-    <input type="hidden" name="sort" value="{{ sort }}">
-    <input type="text" name="q" value="{{ q }}" placeholder="Search products…" aria-label="Search">
-    <button type="submit">Search</button>
-    {% if q or category %}
-        <a class="clear-link" href="{{ url_for('catalog.product_list') }}">Clear filters</a>
-    {% endif %}
+  <input type="hidden" name="category" value="{{ category }}">
+  <input type="hidden" name="sort" value="{{ sort }}">
+  <input type="text" name="q" value="{{ q }}" placeholder="Search products…" aria-label="Search">
+  <button type="submit">Search</button>
+  {% if q or category %}
+    <a class="clear-link" href="{{ url_for('catalog.product_list') }}">Clear filters</a>
+  {% endif %}
 </form>
 
-{# ── Category buttons + sort dropdown ── #}
+{# ── Category pills + sort ── #}
 <div class="controls-row">
-    <div class="category-filters">
-        <a class="cat-btn {% if not category %}active{% endif %}"
-           href="{{ url_for('catalog.product_list', q=q, sort=sort) }}">All</a>
-        {% for cat in categories %}
-            <a class="cat-btn {% if category == cat %}active{% endif %}"
-               href="{{ url_for('catalog.product_list', q=q, category=cat, sort=sort) }}">{{ cat }}</a>
-        {% endfor %}
-    </div>
+  <div class="category-filters">
+    <a class="cat-btn {% if not category %}active{% endif %}"
+       href="{{ url_for('catalog.product_list', q=q, sort=sort) }}">All</a>
+    {% for cat in categories %}
+      <a class="cat-btn {% if category == cat %}active{% endif %}"
+         href="{{ url_for('catalog.product_list', q=q, category=cat, sort=sort) }}">{{ cat }}</a>
+    {% endfor %}
+  </div>
 
-    <form class="sort-form" method="get" action="{{ url_for('catalog.product_list') }}">
-        <input type="hidden" name="q" value="{{ q }}">
-        <input type="hidden" name="category" value="{{ category }}">
-        <select name="sort" aria-label="Sort by" onchange="this.form.submit()">
-            <option value="newest"    {% if sort == 'newest'    %}selected{% endif %}>Newest</option>
-            <option value="price_asc" {% if sort == 'price_asc' %}selected{% endif %}>Price: Low to High</option>
-            <option value="price_desc"{% if sort == 'price_desc'%}selected{% endif %}>Price: High to Low</option>
-        </select>
-    </form>
+  <form class="sort-form" method="get" action="{{ url_for('catalog.product_list') }}">
+    <input type="hidden" name="q" value="{{ q }}">
+    <input type="hidden" name="category" value="{{ category }}">
+    <select name="sort" aria-label="Sort by" onchange="this.form.submit()">
+      <option value="newest"     {% if sort == 'newest'     %}selected{% endif %}>Newest</option>
+      <option value="price_asc"  {% if sort == 'price_asc'  %}selected{% endif %}>Price: Low to High</option>
+      <option value="price_desc" {% if sort == 'price_desc' %}selected{% endif %}>Price: High to Low</option>
+    </select>
+  </form>
 </div>
 
 {# ── Product grid ── #}
 {% if products %}
-    <div class="product-grid">
-        {% for p in products %}
-            <a class="product-card" href="{{ url_for('catalog.product_detail', product_id=p['id']) }}">
-                {% if p['image_url'] %}
-                    {% if p['image_url'].startswith('http') %}
-                        <img src="{{ p['image_url'] }}" alt="{{ p['name'] }}">
-                    {% else %}
-                        <img src="{{ url_for('static', filename=p['image_url']) }}" alt="{{ p['name'] }}">
-                    {% endif %}
-                {% else %}
-                    <div class="img-placeholder">{{ p['category'][0] }}</div>
-                {% endif %}
-                {% if p['stock'] == 0 %}
-                    <span class="badge-oos">Out of stock</span>
-                {% endif %}
-                <div class="card-body">
-                    <p class="product-name">{{ p['name'] }}</p>
-                    <p class="product-price">&#8377;{{ "%.2f"|format(p['price']) }}</p>
-                    {% set r = ratings.get(p['id']) %}
-                    {% if r %}
-                    <p class="product-rating">★ {{ r.avg }} <span class="rating-count">({{ r.count }})</span></p>
-                    {% endif %}
-                    <p class="product-category">{{ p['category'] }}</p>
-                </div>
-            </a>
-        {% endfor %}
-    </div>
-{% elif total == 0 %}
-    <p class="empty-state">
-        No products found.
-        <a href="{{ url_for('catalog.product_list') }}">Clear filters</a>
-    </p>
+  <div class="product-grid">
+    {% for p in products %}
+      <a class="product-card" href="{{ url_for('catalog.product_detail', product_id=p['id']) }}"
+         style="text-decoration:none;display:block;position:relative;">
+
+        {% if p['image_url'] %}
+          {% if p['image_url'].startswith('http') %}
+            <img src="{{ p['image_url'] }}" alt="{{ p['name'] }}">
+          {% else %}
+            <img src="{{ url_for('static', filename=p['image_url']) }}" alt="{{ p['name'] }}">
+          {% endif %}
+        {% else %}
+          <div class="img-placeholder">{{ p['category'][0] }}</div>
+        {% endif %}
+
+        {% if p['stock'] == 0 %}
+          <span class="badge-oos">Out of stock</span>
+        {% endif %}
+
+        <p class="title mt-2">{{ p['name'] }}</p>
+        <p class="price">&#8377;{{ "%.2f"|format(p['price']) }}</p>
+
+        {% set r = ratings.get(p['id']) %}
+        {% if r %}
+          <span class="rating-badge">★ {{ r.avg }} ({{ r.count }})</span>
+        {% endif %}
+
+        <p class="text-soft mt-1" style="font-size:var(--fs-xs);">{{ p['category'] }}</p>
+      </a>
+    {% endfor %}
+  </div>
+
+{% else %}
+  <div class="empty-state">
+    <p>No products found.</p>
+    <a href="{{ url_for('catalog.product_list') }}">Clear filters</a>
+  </div>
 {% endif %}
 
 {# ── Pagination ── #}
 {% if total_pages > 1 %}
-    <nav class="pagination" aria-label="Page navigation">
-        {% if page > 1 %}
-            <a href="{{ url_for('catalog.product_list', q=q, category=category, sort=sort, page=page-1) }}">&laquo; Prev</a>
-        {% else %}
-            <span>&laquo; Prev</span>
-        {% endif %}
+  <nav class="pagination" aria-label="Page navigation">
+    {% if page > 1 %}
+      <a href="{{ url_for('catalog.product_list', q=q, category=category, sort=sort, page=page-1) }}">&laquo; Prev</a>
+    {% else %}
+      <span>&laquo; Prev</span>
+    {% endif %}
 
-        {% for p in range(1, total_pages + 1) %}
-            <a class="{% if p == page %}active{% endif %}"
-               href="{{ url_for('catalog.product_list', q=q, category=category, sort=sort, page=p) }}">{{ p }}</a>
-        {% endfor %}
+    {% for pg in range(1, total_pages + 1) %}
+      <a class="{% if pg == page %}active{% endif %}"
+         href="{{ url_for('catalog.product_list', q=q, category=category, sort=sort, page=pg) }}">{{ pg }}</a>
+    {% endfor %}
 
-        {% if page < total_pages %}
-            <a href="{{ url_for('catalog.product_list', q=q, category=category, sort=sort, page=page+1) }}">Next &raquo;</a>
-        {% else %}
-            <span>Next &raquo;</span>
-        {% endif %}
-    </nav>
+    {% if page < total_pages %}
+      <a href="{{ url_for('catalog.product_list', q=q, category=category, sort=sort, page=page+1) }}">Next &raquo;</a>
+    {% else %}
+      <span>Next &raquo;</span>
+    {% endif %}
+  </nav>
 {% endif %}
+
 {% endblock %}

@@ -66,7 +66,11 @@
         <tr>
             <td>
                 {% if item['image_url'] %}
-                    <img class="cart-img" src="{{ item['image_url'] }}" alt="{{ item['name'] }}">
+                    {% if item['image_url'].startswith('http') %}
+                        <img class="cart-img" src="{{ item['image_url'] }}" alt="{{ item['name'] }}">
+                    {% else %}
+                        <img class="cart-img" src="{{ url_for('static', filename=item['image_url']) }}" alt="{{ item['name'] }}">
+                    {% endif %}
                 {% else %}
                     <div class="cart-img-placeholder">{{ item['name'][0] }}</div>
                 {% endif %}

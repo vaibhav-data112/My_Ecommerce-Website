@@ -1,190 +1,109 @@
-<style>
-    .reviews-section {
-        margin-top: 2.5rem;
-        border-top: 2px solid #e8eaf0;
-        padding-top: 1.75rem;
-    }
-    .reviews-section h2 { font-size: 1.3rem; margin-bottom: 1rem; }
-
-    .avg-rating { display: flex; align-items: center; gap: .6rem; margin-bottom: 1.25rem; }
-    .avg-stars { color: #f39c12; font-size: 1.3rem; letter-spacing: .06em; }
-    .avg-value { font-size: 1.1rem; font-weight: 700; color: #1a1a2e; }
-    .avg-count { color: #888; font-size: .9rem; }
-
-    .no-reviews-msg { color: #888; font-style: italic; margin-bottom: 1rem; }
-    .review-hint { color: #888; font-size: .9rem; margin-bottom: 1rem; }
-    .review-hint a { color: #1a1a2e; font-weight: 600; }
-
-    /* Add / edit review form */
-    .review-form-wrap {
-        background: #f8f9ff; border: 1px solid #e0e3f0; border-radius: 8px;
-        padding: 1.25rem; margin-bottom: 1.5rem;
-    }
-    .review-form-wrap h3 { font-size: 1rem; margin-bottom: .75rem; }
-    .star-input {
-        display: flex; flex-direction: row-reverse;
-        gap: .05rem; width: fit-content; margin-bottom: .75rem;
-    }
-    .star-input input[type="radio"] { display: none; }
-    .star-input label {
-        font-size: 2rem; color: #ccc; cursor: pointer;
-        transition: color .1s; line-height: 1;
-    }
-    .star-input label:hover,
-    .star-input label:hover ~ label { color: #f39c12; }
-    .star-input input:checked + label,
-    .star-input input:checked + label ~ label { color: #f39c12; }
-    .review-form-wrap textarea {
-        width: 100%; padding: .6rem .75rem; border: 1px solid #ccc;
-        border-radius: 6px; font-size: .9rem; resize: vertical;
-        font-family: inherit; box-sizing: border-box; margin-bottom: .75rem;
-    }
-
-    /* Review cards */
-    .review-card {
-        border: 1px solid #e8eaf0; border-radius: 8px; padding: 1rem;
-        margin-bottom: .85rem; background: #fff;
-    }
-    .user-review { border-color: #1a1a2e; border-width: 2px; }
-    .review-header {
-        display: flex; align-items: center; gap: .5rem;
-        margin-bottom: .4rem; flex-wrap: wrap;
-    }
-    .reviewer-name { font-weight: 600; font-size: .9rem; color: #1a1a2e; }
-    .verified-badge {
-        font-size: .72rem; background: #1a1a2e; color: #fff;
-        padding: .1rem .45rem; border-radius: 3px; font-weight: 600;
-    }
-    .review-stars { color: #f39c12; font-size: 1rem; letter-spacing: .04em; }
-    .review-date { color: #aaa; font-size: .8rem; margin-left: auto; }
-    .review-comment { color: #444; font-size: .9rem; line-height: 1.6; margin: 0; }
-
-    /* Edit / delete controls */
-    .review-actions { margin-top: .75rem; display: flex; gap: .75rem; align-items: center; }
-    details.edit-toggle > summary {
-        cursor: pointer; color: #1a1a2e; font-size: .85rem; font-weight: 600;
-        list-style: none; display: inline-block; text-decoration: underline;
-    }
-    details.edit-toggle > summary::-webkit-details-marker { display: none; }
-    .edit-form-inner { margin-top: .75rem; }
-    .edit-form-inner textarea {
-        width: 100%; padding: .5rem .65rem; border: 1px solid #ccc;
-        border-radius: 6px; font-size: .9rem; font-family: inherit;
-        resize: vertical; box-sizing: border-box; margin-bottom: .5rem;
-    }
-    .btn-delete {
-        background: none; border: none; color: #e74c3c; cursor: pointer;
-        font-size: .85rem; font-weight: 600; padding: 0; text-decoration: underline;
-    }
-    .btn-delete:hover { color: #c0392b; }
-    .reviews-list { margin-top: 1rem; }
-</style>
-
 <div class="reviews-section">
-    <h2>Customer Reviews</h2>
+  <h2>Customer Reviews</h2>
 
-    {# Average rating bar #}
-    {% if review_count > 0 %}
-    <div class="avg-rating">
-        <span class="avg-stars">
-            {%- for i in range(1, 6) -%}{{ '★' if i <= (avg_rating | round | int) else '☆' }}{%- endfor -%}
-        </span>
-        <span class="avg-value">{{ avg_rating }}</span>
-        <span class="avg-count">({{ review_count }} review{{ 's' if review_count != 1 }})</span>
-    </div>
-    {% else %}
-    <p class="no-reviews-msg">No reviews yet.</p>
-    {% endif %}
+  {# ── Average rating ── #}
+  {% if review_count > 0 %}
+  <div class="avg-rating">
+    <span class="avg-stars">
+      {%- for i in range(1, 6) -%}{{ '★' if i <= (avg_rating | round | int) else '☆' }}{%- endfor -%}
+    </span>
+    <span class="avg-value">{{ avg_rating }}</span>
+    <span class="avg-count">({{ review_count }} review{{ 's' if review_count != 1 }})</span>
+  </div>
+  {% else %}
+  <p class="no-reviews-msg">No reviews yet — be the first!</p>
+  {% endif %}
 
-    {# Add review form (eligible verified buyer who hasn't reviewed) #}
-    {% if can_review %}
-    <div class="review-form-wrap">
-        <h3>Write a Review</h3>
-        <form method="post" action="{{ url_for('reviews.add_review', product_id=product['id']) }}">
-            <div class="star-input">
-                {% for i in [5, 4, 3, 2, 1] %}
-                <input type="radio" name="rating" id="star{{ i }}" value="{{ i }}" required>
-                <label for="star{{ i }}">★</label>
-                {% endfor %}
-            </div>
-            <textarea name="comment" placeholder="Share your experience (optional)..." rows="4"></textarea>
-            <button type="submit" class="btn btn-primary" style="width:auto;">Submit Review</button>
-        </form>
-    </div>
-
-    {# User's existing review with edit / delete #}
-    {% elif user_review %}
-    <div class="review-card user-review">
-        <div class="review-header">
-            <span class="reviewer-name">Your Review</span>
-            <span class="verified-badge">Verified Purchase</span>
-            <span class="review-stars">
-                {%- for i in range(1, 6) -%}{{ '★' if i <= user_review['rating'] else '☆' }}{%- endfor -%}
-            </span>
-            <span class="review-date">{{ user_review['created_at'][:10] }}</span>
-        </div>
-        {% if user_review['comment'] %}
-        <p class="review-comment">{{ user_review['comment'] }}</p>
-        {% endif %}
-        <div class="review-actions">
-            <details class="edit-toggle">
-                <summary>Edit</summary>
-                <div class="edit-form-inner">
-                    <form method="post" action="{{ url_for('reviews.edit_review', review_id=user_review['id']) }}">
-                        <div class="star-input">
-                            {% for i in [5, 4, 3, 2, 1] %}
-                            <input type="radio" name="rating" id="estr{{ i }}" value="{{ i }}"
-                                   {% if user_review['rating'] == i %}checked{% endif %}>
-                            <label for="estr{{ i }}">★</label>
-                            {% endfor %}
-                        </div>
-                        <textarea name="comment" rows="3">{{ user_review['comment'] or '' }}</textarea>
-                        <button type="submit" class="btn btn-primary" style="width:auto;">Save</button>
-                    </form>
-                </div>
-            </details>
-            <form method="post" action="{{ url_for('reviews.delete_review', review_id=user_review['id']) }}"
-                  onsubmit="return confirm('Delete your review?')">
-                <button type="submit" class="btn-delete">Delete</button>
-            </form>
-        </div>
-    </div>
-
-    {# Logged-in but not a buyer #}
-    {% elif current_user.is_authenticated %}
-    <p class="review-hint">Only verified buyers can leave a review.</p>
-
-    {# Not logged in #}
-    {% else %}
-    <p class="review-hint"><a href="{{ url_for('auth.login') }}">Log in</a> to write a review.</p>
-    {% endif %}
-
-    {# All other reviews (exclude user's own — already shown above) #}
-    {% set has_others = namespace(val=false) %}
-    {% for rev in product_reviews %}
-        {% if not (user_review and rev['id'] == user_review['id']) %}
-            {% set has_others.val = true %}
-        {% endif %}
-    {% endfor %}
-
-    {% if has_others.val %}
-    <div class="reviews-list">
-        {% for rev in product_reviews %}
-            {% if not (user_review and rev['id'] == user_review['id']) %}
-            <div class="review-card">
-                <div class="review-header">
-                    <span class="reviewer-name">{{ rev['reviewer_name'].split()[0] }}</span>
-                    <span class="review-stars">
-                        {%- for i in range(1, 6) -%}{{ '★' if i <= rev['rating'] else '☆' }}{%- endfor -%}
-                    </span>
-                    <span class="review-date">{{ rev['created_at'][:10] }}</span>
-                </div>
-                {% if rev['comment'] %}
-                <p class="review-comment">{{ rev['comment'] }}</p>
-                {% endif %}
-            </div>
-            {% endif %}
+  {# ── Add review form (verified buyer, no prior review) ── #}
+  {% if can_review %}
+  <div class="review-form-wrap">
+    <h3>Write a Review</h3>
+    <form method="post" action="{{ url_for('reviews.add_review', product_id=product['id']) }}">
+      <div class="star-input">
+        {% for i in [5, 4, 3, 2, 1] %}
+        <input type="radio" name="rating" id="star{{ i }}" value="{{ i }}" required>
+        <label for="star{{ i }}">★</label>
         {% endfor %}
+      </div>
+      <textarea name="comment" placeholder="Share your experience (optional)…" rows="4"></textarea>
+      <button type="submit" class="btn btn-primary" style="width:auto;">Submit Review</button>
+    </form>
+  </div>
+
+  {# ── User's existing review with edit / delete ── #}
+  {% elif user_review %}
+  <div class="review-card user-review">
+    <div class="review-header">
+      <span class="reviewer-name">Your Review</span>
+      <span class="verified-badge">Verified Purchase</span>
+      <span class="review-stars">
+        {%- for i in range(1, 6) -%}{{ '★' if i <= user_review['rating'] else '☆' }}{%- endfor -%}
+      </span>
+      <span class="review-date">{{ user_review['created_at'][:10] }}</span>
     </div>
+    {% if user_review['comment'] %}
+    <p class="review-comment">{{ user_review['comment'] }}</p>
     {% endif %}
+    <div class="review-actions">
+      <details class="edit-toggle">
+        <summary>Edit</summary>
+        <div class="edit-form-inner">
+          <form method="post" action="{{ url_for('reviews.edit_review', review_id=user_review['id']) }}">
+            <div class="star-input">
+              {% for i in [5, 4, 3, 2, 1] %}
+              <input type="radio" name="rating" id="estr{{ i }}" value="{{ i }}"
+                     {% if user_review['rating'] == i %}checked{% endif %}>
+              <label for="estr{{ i }}">★</label>
+              {% endfor %}
+            </div>
+            <textarea name="comment" rows="3">{{ user_review['comment'] or '' }}</textarea>
+            <button type="submit" class="btn btn-primary" style="width:auto;">Save</button>
+          </form>
+        </div>
+      </details>
+      <form method="post" action="{{ url_for('reviews.delete_review', review_id=user_review['id']) }}"
+            onsubmit="return confirm('Delete your review?')">
+        <button type="submit" class="btn-delete">Delete</button>
+      </form>
+    </div>
+  </div>
+
+  {# ── Logged in but not a buyer ── #}
+  {% elif current_user.is_authenticated %}
+  <p class="review-hint">Only verified buyers can leave a review.</p>
+
+  {# ── Not logged in ── #}
+  {% else %}
+  <p class="review-hint"><a href="{{ url_for('auth.login') }}">Log in</a> to write a review.</p>
+  {% endif %}
+
+  {# ── Other reviews ── #}
+  {% set has_others = namespace(val=false) %}
+  {% for rev in product_reviews %}
+    {% if not (user_review and rev['id'] == user_review['id']) %}
+      {% set has_others.val = true %}
+    {% endif %}
+  {% endfor %}
+
+  {% if has_others.val %}
+  <div class="reviews-list">
+    {% for rev in product_reviews %}
+      {% if not (user_review and rev['id'] == user_review['id']) %}
+      <div class="review-card">
+        <div class="review-header">
+          <span class="reviewer-name">{{ rev['reviewer_name'].split()[0] }}</span>
+          <span class="review-stars">
+            {%- for i in range(1, 6) -%}{{ '★' if i <= rev['rating'] else '☆' }}{%- endfor -%}
+          </span>
+          <span class="review-date">{{ rev['created_at'][:10] }}</span>
+        </div>
+        {% if rev['comment'] %}
+        <p class="review-comment">{{ rev['comment'] }}</p>
+        {% endif %}
+      </div>
+      {% endif %}
+    {% endfor %}
+  </div>
+  {% endif %}
+
 </div>

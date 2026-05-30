@@ -1,16 +1,65 @@
 {% extends 'base.html' %}
-{% block title %}Home — My Shop{% endblock %}
+{% block title %}Karvii — Premium Boutique Fashion{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* pull hero full-width, outside .container */
+  .hero { margin-left: calc(-1 * var(--space-3)); margin-right: calc(-1 * var(--space-3)); }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="card">
-    {% if current_user.is_authenticated %}
-        <h2>Welcome back, {{ current_user.name }}!</h2>
-        <p style="margin-top:.75rem;color:#555">The product catalogue is coming soon.</p>
-    {% else %}
-        <h2>Welcome to My Shop</h2>
-        <p style="margin-top:.75rem;color:#555">
-            <a href="/signup">Create an account</a> or <a href="/login">log in</a> to start shopping.
-        </p>
-    {% endif %}
+
+{# ── Hero ── #}
+<div class="hero">
+  <h1>Discover Your Style</h1>
+  <p>Curated collections of premium fashion — delivered to your door.</p>
+  <a class="btn btn-cart" href="{{ url_for('catalog.product_list') }}">Shop All Products</a>
 </div>
+
+{# ── Featured products ── #}
+{% if products %}
+<div>
+  <h2 class="section-heading">Featured Products</h2>
+  <p class="section-sub">Hand-picked favourites from our latest collection</p>
+  <div class="product-grid">
+    {% for p in products %}
+      <a class="product-card" href="{{ url_for('catalog.product_detail', product_id=p['id']) }}" style="text-decoration:none;display:block;position:relative;">
+        {% if p['image_url'] %}
+          {% if p['image_url'].startswith('http') %}
+            <img src="{{ p['image_url'] }}" alt="{{ p['name'] }}">
+          {% else %}
+            <img src="{{ url_for('static', filename=p['image_url']) }}" alt="{{ p['name'] }}">
+          {% endif %}
+        {% else %}
+          <div class="img-placeholder">{{ p['category'][0] }}</div>
+        {% endif %}
+
+        {% if p['stock'] == 0 %}
+          <span class="badge-oos">Out of stock</span>
+        {% endif %}
+
+        <p class="title">{{ p['name'] }}</p>
+        <p class="price">&#8377;{{ "%.2f"|format(p['price']) }}</p>
+
+        {% set r = ratings.get(p['id']) %}
+        {% if r %}
+          <span class="rating-badge">★ {{ r.avg }}</span>
+        {% endif %}
+
+        {% if p['stock'] > 0 %}
+          <p class="in-stock mt-1">In stock</p>
+        {% else %}
+          <p class="out-stock mt-1">Out of stock</p>
+        {% endif %}
+      </a>
+    {% endfor %}
+  </div>
+
+  <div class="text-center mt-4">
+    <a class="btn btn-outline" href="{{ url_for('catalog.product_list') }}">View All Products &rarr;</a>
+  </div>
+</div>
+{% endif %}
+
 {% endblock %}
