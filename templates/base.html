@@ -3,77 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}My Shop{% endblock %}</title>
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: system-ui, sans-serif; background: #f5f5f5; color: #222; }
-        nav {
-            background: #1a1a2e; color: #fff; padding: 0 1.5rem;
-            display: flex; align-items: center; justify-content: space-between; height: 56px;
-        }
-        nav .brand { font-size: 1.2rem; font-weight: 700; text-decoration: none; color: #fff; }
-        nav .nav-links a, nav .nav-links button {
-            color: #fff; text-decoration: none; margin-left: 1rem;
-            background: none; border: none; cursor: pointer; font-size: 1rem;
-        }
-        nav .nav-links a:hover, nav .nav-links button:hover { text-decoration: underline; }
-        .container { max-width: 960px; margin: 2rem auto; padding: 0 1rem; }
-        .flash-messages { margin-bottom: 1rem; }
-        .flash { padding: .75rem 1rem; border-radius: 4px; margin-bottom: .5rem; }
-        .flash.error { background: #fde8e8; color: #c0392b; border: 1px solid #e74c3c; }
-        .flash.success { background: #e8f8e8; color: #27ae60; border: 1px solid #2ecc71; }
-        .flash.info { background: #e8f4fd; color: #2471a3; border: 1px solid #3498db; }
-        .btn-disabled { background: #ccc; color: #666; cursor: not-allowed; width: 100%; text-align: center; padding: .65rem 1.4rem; border-radius: 4px; font-size: 1rem; font-weight: 600; border: none; display: inline-block; }
-        .card {
-            background: #fff; border-radius: 8px; padding: 2rem;
-            box-shadow: 0 2px 8px rgba(0,0,0,.08);
-        }
-        .form-group { margin-bottom: 1rem; }
-        .form-group label { display: block; font-weight: 600; margin-bottom: .4rem; font-size: .9rem; }
-        .form-group input[type="text"],
-        .form-group input[type="email"],
-        .form-group input[type="password"] {
-            width: 100%; padding: .6rem .8rem; border: 1px solid #ccc;
-            border-radius: 4px; font-size: 1rem;
-        }
-        .form-group input:focus { outline: none; border-color: #1a1a2e; }
-        .btn {
-            display: inline-block; padding: .65rem 1.4rem; border-radius: 4px;
-            font-size: 1rem; font-weight: 600; cursor: pointer; text-decoration: none;
-            border: none; transition: opacity .15s;
-        }
-        .btn:hover { opacity: .85; }
-        .btn-primary { background: #1a1a2e; color: #fff; width: 100%; text-align: center; }
-        .btn-google {
-            background: #fff; color: #444; border: 1px solid #ccc; width: 100%;
-            text-align: center; display: flex; align-items: center; justify-content: center; gap: .5rem;
-        }
-        .divider { text-align: center; margin: 1rem 0; color: #999; font-size: .9rem; }
-        .link-row { text-align: center; margin-top: 1rem; font-size: .9rem; }
-        .link-row a { color: #1a1a2e; }
-        .checkbox-row { display: flex; align-items: center; gap: .5rem; font-size: .9rem; }
-    </style>
+    <title>{% block title %}Karvii{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    {% block extra_head %}{% endblock %}
 </head>
 <body>
-<nav>
-    <a class="brand" href="/">My Shop</a>
-    <div class="nav-links">
-        {% if current_user.is_authenticated %}
-            <a href="{{ url_for('orders.order_history') }}" style="color:#fff;text-decoration:none;margin-left:1rem;">My Orders</a>
-            <a href="{{ url_for('cart.view_cart') }}" style="color:#fff;text-decoration:none;margin-left:1rem;">Cart{% if cart_count > 0 %} ({{ cart_count }}){% endif %}</a>
-            {% if current_user.is_admin %}
-                <a href="{{ url_for('admin.dashboard') }}" style="color:#f0b429;text-decoration:none;margin-left:1rem;font-weight:700;">Admin</a>
+
+<nav class="navbar">
+    <div class="container">
+        <a class="brand" href="/">
+            <span class="logo-circle"><img src="{{ url_for('static', filename='image/logo.png') }}" alt="Karvii logo"></span>
+            <span>Karvii</span>
+        </a>
+
+        <div class="nav-links">
+            {% if current_user.is_authenticated %}
+                <a href="{{ url_for('orders.order_history') }}">My Orders</a>
+                <a href="{{ url_for('cart.view_cart') }}">
+                    Cart{% if cart_count > 0 %}<span class="cart-badge">{{ cart_count }}</span>{% endif %}
+                </a>
+                {% if current_user.is_admin %}
+                    <a href="{{ url_for('admin.dashboard') }}" class="admin-link">Admin</a>
+                {% endif %}
+                <span class="user-name">{{ current_user.name }}</span>
+                <form method="post" action="/logout" style="display:inline">
+                    <button type="submit">Logout</button>
+                </form>
+            {% else %}
+                <a href="/login">Login</a>
+                <a href="/signup">Sign Up</a>
             {% endif %}
-            <span>{{ current_user.name }}</span>
-            <form method="post" action="/logout" style="display:inline">
-                <button type="submit">Logout</button>
-            </form>
-        {% else %}
-            <a href="/login">Login</a>
-            <a href="/signup">Sign Up</a>
-        {% endif %}
+        </div>
     </div>
 </nav>
+
 <div class="container">
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
@@ -86,5 +52,12 @@
     {% endwith %}
     {% block content %}{% endblock %}
 </div>
+
+<footer class="footer">
+    <div class="container">
+        <p>&copy; 2024 <a href="/">Karvii</a> &mdash; Premium Boutique Fashion</p>
+    </div>
+</footer>
+
 </body>
 </html>

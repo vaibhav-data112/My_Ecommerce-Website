@@ -74,8 +74,13 @@
                 <tr>
                     <td>
                         {% if item['image_url'] %}
-                            <img src="{{ item['image_url'] }}" alt="{{ item['name'] }}"
-                                 style="width:40px;height:40px;object-fit:cover;border-radius:4px;vertical-align:middle;">
+                            {% if item['image_url'].startswith('http') %}
+                                <img src="{{ item['image_url'] }}" alt="{{ item['name'] }}"
+                                     style="width:40px;height:40px;object-fit:cover;border-radius:4px;vertical-align:middle;">
+                            {% else %}
+                                <img src="{{ url_for('static', filename=item['image_url']) }}" alt="{{ item['name'] }}"
+                                     style="width:40px;height:40px;object-fit:cover;border-radius:4px;vertical-align:middle;">
+                            {% endif %}
                         {% else %}
                             <span class="img-placeholder">{{ item['name'][0] }}</span>
                         {% endif %}

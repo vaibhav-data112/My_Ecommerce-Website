@@ -2,7 +2,7 @@ import os
 
 from authlib.integrations.flask_client import OAuth
 from dotenv import load_dotenv
-from flask import Flask, redirect, render_template, url_for
+from flask import Flask, render_template, url_for
 from flask_login import current_user
 
 from admin import admin as admin_blueprint
@@ -10,7 +10,7 @@ from auth import auth, init_google_oauth, init_login_manager
 from cart import cart
 from catalog import catalog
 from checkout import checkout
-from db import get_cart_count, init_db, migrate_db, seed_db
+from db import get_all_avg_ratings, get_all_products, get_cart_count, init_db, migrate_db, seed_db
 from orders import orders
 from payment import payment
 from reviews import reviews
@@ -49,7 +49,9 @@ def inject_cart_count():
 
 @app.route('/')
 def index():
-    return redirect(url_for('catalog.product_list'))
+    products = get_all_products()[:8]
+    ratings = get_all_avg_ratings()
+    return render_template('index.html', products=products, ratings=ratings)
 
 
 if __name__ == '__main__':
