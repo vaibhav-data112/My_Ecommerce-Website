@@ -22,6 +22,9 @@
         <div class="nav-links">
             {% if current_user.is_authenticated %}
                 <a href="{{ url_for('orders.order_history') }}">My Orders</a>
+                <a href="{{ url_for('wishlist.view_wishlist') }}">
+                    Wishlist{% if wishlist_count > 0 %}<span class="cart-badge">{{ wishlist_count }}</span>{% endif %}
+                </a>
                 <a href="{{ url_for('cart.view_cart') }}">
                     Cart{% if cart_count > 0 %}<span class="cart-badge">{{ cart_count }}</span>{% endif %}
                 </a>

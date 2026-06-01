@@ -48,33 +48,50 @@
 {% if products %}
   <div class="product-grid">
     {% for p in products %}
-      <a class="product-card" href="{{ url_for('catalog.product_detail', product_id=p['id']) }}"
-         style="text-decoration:none;display:block;position:relative;">
+      <div class="product-card-wrap">
+        <a class="product-card" href="{{ url_for('catalog.product_detail', product_id=p['id']) }}"
+           style="text-decoration:none;display:block;position:relative;">
 
-        {% if p['image_url'] %}
-          {% if p['image_url'].startswith('http') %}
-            <img src="{{ p['image_url'] }}" alt="{{ p['name'] }}">
+          {% if p['image_url'] %}
+            {% if p['image_url'].startswith('http') %}
+              <img src="{{ p['image_url'] }}" alt="{{ p['name'] }}">
+            {% else %}
+              <img src="{{ url_for('static', filename=p['image_url']) }}" alt="{{ p['name'] }}">
+            {% endif %}
           {% else %}
-            <img src="{{ url_for('static', filename=p['image_url']) }}" alt="{{ p['name'] }}">
+            <div class="img-placeholder">{{ p['category'][0] }}</div>
           {% endif %}
+
+          {% if p['stock'] == 0 %}
+            <span class="badge-oos">Out of stock</span>
+          {% endif %}
+
+          <p class="title mt-2">{{ p['name'] }}</p>
+          <p class="price">&#8377;{{ "%.2f"|format(p['price']) }}</p>
+
+          {% set r = ratings.get(p['id']) %}
+          {% if r %}
+            <span class="rating-badge">★ {{ r.avg }} ({{ r.count }})</span>
+          {% endif %}
+
+          <p class="text-soft mt-1" style="font-size:var(--fs-xs);">{{ p['category'] }}</p>
+        </a>
+
+        {# Heart button — absolutely positioned over the card, outside <a> to avoid nested interactive elements #}
+        {% if current_user.is_authenticated %}
+          <form method="post" action="{{ url_for('wishlist.toggle_wishlist') }}" class="heart-form">
+            <input type="hidden" name="product_id" value="{{ p['id'] }}">
+            <input type="hidden" name="next" value="{{ request.url }}">
+            <button type="submit"
+                    class="heart-btn {% if p['id'] in wishlist_ids %}heart-filled{% else %}heart-empty{% endif %}"
+                    title="{% if p['id'] in wishlist_ids %}Remove from wishlist{% else %}Save to wishlist{% endif %}">
+              {% if p['id'] in wishlist_ids %}&#9829;{% else %}&#9825;{% endif %}
+            </button>
+          </form>
         {% else %}
-          <div class="img-placeholder">{{ p['category'][0] }}</div>
+          <a href="{{ url_for('auth.login') }}" class="heart-btn heart-empty" title="Login to save">&#9825;</a>
         {% endif %}
-
-        {% if p['stock'] == 0 %}
-          <span class="badge-oos">Out of stock</span>
-        {% endif %}
-
-        <p class="title mt-2">{{ p['name'] }}</p>
-        <p class="price">&#8377;{{ "%.2f"|format(p['price']) }}</p>
-
-        {% set r = ratings.get(p['id']) %}
-        {% if r %}
-          <span class="rating-badge">★ {{ r.avg }} ({{ r.count }})</span>
-        {% endif %}
-
-        <p class="text-soft mt-1" style="font-size:var(--fs-xs);">{{ p['category'] }}</p>
-      </a>
+      </div>
     {% endfor %}
   </div>
 

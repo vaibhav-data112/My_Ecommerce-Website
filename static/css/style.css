@@ -548,6 +548,7 @@ a:hover { color: var(--color-gold-dark); }
 .detail-image {
   flex: 1;
   min-width: 280px;
+  position: relative;
 }
 .detail-image img,
 .detail-image .img-placeholder {
@@ -767,6 +768,89 @@ details.edit-toggle > summary::-webkit-details-marker { display: none; }
 }
 .btn-delete:hover { color: #922f28; }
 .reviews-list { margin-top: var(--space-3); }
+
+/* ============================================================
+   Wishlist — heart button (product cards & list)
+   ============================================================ */
+
+/* Wrapper so the heart form sits as a sibling of <a>, not inside it */
+.product-card-wrap {
+  position: relative;
+}
+
+/* The form holding the heart button — positioned absolute over top-right of card */
+.heart-form {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  z-index: 3;
+  margin: 0;
+  padding: 0;
+}
+
+/* The heart button itself */
+.heart-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-sm);
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+  text-decoration: none;
+  transition: transform 0.15s, box-shadow 0.15s, background 0.15s;
+}
+.heart-btn:hover {
+  transform: scale(1.18);
+  box-shadow: var(--shadow-md);
+  background: var(--color-cream);
+}
+.heart-filled { color: var(--color-gold-dark); }
+.heart-empty  { color: var(--color-text-soft); }
+
+/* Wishlist action row (Add to Cart / Remove) under each card on the wishlist page */
+.wishlist-actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  padding: 0 var(--space-1);
+}
+
+/* Heart button on the product DETAIL page (inline, next to Add to Cart) */
+.btn-heart {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px var(--space-3);
+  border-radius: var(--radius);
+  border: 1.5px solid var(--color-gold);
+  background: transparent;
+  font-family: var(--font-body);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.18s, color 0.18s;
+  white-space: nowrap;
+}
+.btn-heart.heart-filled {
+  background: var(--color-gold);
+  color: var(--color-plum);
+  border-color: var(--color-gold);
+}
+.btn-heart.heart-empty {
+  color: var(--color-plum);
+}
+.btn-heart:hover {
+  background: var(--color-gold-dark);
+  color: var(--color-plum);
+  border-color: var(--color-gold-dark);
+}
 
 /* ============================================================
    Utility
