@@ -3,7 +3,7 @@ from flask_login import current_user
 
 from db import (can_user_review, get_all_avg_ratings, get_average_rating,
                 get_product_by_id, get_product_reviews, get_user_review,
-                search_products)
+                is_in_wishlist, search_products)
 
 catalog = Blueprint('catalog', __name__)
 
@@ -48,9 +48,11 @@ def product_detail(product_id):
     avg_data = get_average_rating(product_id)
     user_review = None
     can_review = False
+    in_wishlist = False
     if current_user.is_authenticated:
         user_review = get_user_review(current_user.id, product_id)
         can_review = can_user_review(current_user.id, product_id)
+        in_wishlist = is_in_wishlist(current_user.id, product_id)
     return render_template(
         'products/detail.html',
         product=product,
@@ -59,6 +61,7 @@ def product_detail(product_id):
         review_count=avg_data['count'],
         user_review=user_review,
         can_review=can_review,
+        in_wishlist=in_wishlist,
     )
 
 

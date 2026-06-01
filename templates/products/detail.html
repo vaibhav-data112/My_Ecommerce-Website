@@ -16,6 +16,22 @@
     {% else %}
       <div class="img-placeholder">{{ product['category'][0] }}</div>
     {% endif %}
+
+    {# Heart icon — top-right of image, same style as product cards #}
+    {% if current_user.is_authenticated %}
+      <form method="post" action="{{ url_for('wishlist.toggle_wishlist') }}" class="heart-form">
+        <input type="hidden" name="product_id" value="{{ product['id'] }}">
+        <input type="hidden" name="next" value="{{ request.url }}">
+        <button type="submit"
+                class="heart-btn {% if in_wishlist %}heart-filled{% else %}heart-empty{% endif %}"
+                title="{% if in_wishlist %}Remove from wishlist{% else %}Save to wishlist{% endif %}">
+          {% if in_wishlist %}&#9829;{% else %}&#9825;{% endif %}
+        </button>
+      </form>
+    {% else %}
+      <a href="{{ url_for('auth.login') }}?next={{ request.url }}"
+         class="heart-btn heart-empty" title="Login to save">&#9825;</a>
+    {% endif %}
   </div>
 
   {# ── Info panel ── #}

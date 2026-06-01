@@ -367,6 +367,18 @@ def migrate_db():
         if admin_email:
             conn.execute("UPDATE users SET is_admin = 1 WHERE email = ?", (admin_email.lower(),))
 
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS wishlist_items (
+                id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id    INTEGER NOT NULL,
+                product_id INTEGER NOT NULL,
+                added_at   TEXT    DEFAULT (datetime('now')),
+                FOREIGN KEY (user_id)    REFERENCES users(id),
+                FOREIGN KEY (product_id) REFERENCES products(id),
+                UNIQUE (user_id, product_id)
+            )
+        """)
+
         conn.commit()
     finally:
         conn.close()
@@ -479,6 +491,72 @@ def get_review_by_id(review_id):
     conn = get_db()
     try:
         return conn.execute("SELECT * FROM reviews WHERE id = ?", (review_id,)).fetchone()
+    finally:
+        conn.close()
+
+
+# ---------------------------------------------------------------------------
+# Wishlist helpers
+# ---------------------------------------------------------------------------
+
+def add_to_wishlist(user_id, product_id):
+    conn = get_db()
+    try:
+        conn.execute(
+            "INSERT OR IGNORE INTO wishlist_items (user_id, product_id) VALUES (?, ?)",
+            (user_id, product_id)
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def remove_from_wishlist(user_id, product_id):
+    conn = get_db()
+    try:
+        conn.execute(
+            "DELETE FROM wishlist_items WHERE user_id = ? AND product_id = ?",
+            (user_id, product_id)
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def get_user_wishlist(user_id):
+    conn = get_db()
+    try:
+        return conn.execute("""
+            SELECT p.*
+            FROM wishlist_items wi
+            JOIN products p ON p.id = wi.product_id
+            WHERE wi.user_id = ?
+            ORDER BY wi.added_at DESC
+        """, (user_id,)).fetchall()
+    finally:
+        conn.close()
+
+
+def is_in_wishlist(user_id, product_id):
+    conn = get_db()
+    try:
+        row = conn.execute(
+            "SELECT 1 FROM wishlist_items WHERE user_id = ? AND product_id = ?",
+            (user_id, product_id)
+        ).fetchone()
+        return row is not None
+    finally:
+        conn.close()
+
+
+def get_wishlist_count(user_id):
+    conn = get_db()
+    try:
+        row = conn.execute(
+            "SELECT COUNT(*) FROM wishlist_items WHERE user_id = ?",
+            (user_id,)
+        ).fetchone()
+        return int(row[0])
     finally:
         conn.close()
 

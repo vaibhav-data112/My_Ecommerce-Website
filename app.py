@@ -10,10 +10,12 @@ from auth import auth, init_google_oauth, init_login_manager
 from cart import cart
 from catalog import catalog
 from checkout import checkout
-from db import get_all_avg_ratings, get_all_products, get_cart_count, init_db, migrate_db, seed_db
+from db import (get_all_avg_ratings, get_all_products, get_cart_count,
+                get_user_wishlist, get_wishlist_count, init_db, migrate_db, seed_db)
 from orders import orders
 from payment import payment
 from reviews import reviews
+from wishlist import wishlist
 
 load_dotenv()
 
@@ -39,12 +41,25 @@ app.register_blueprint(checkout)
 app.register_blueprint(orders)
 app.register_blueprint(payment)
 app.register_blueprint(reviews)
+app.register_blueprint(wishlist)
 
 
 @app.context_processor
 def inject_cart_count():
     count = get_cart_count(int(current_user.id)) if current_user.is_authenticated else 0
     return dict(cart_count=count)
+
+
+@app.context_processor
+def inject_wishlist_data():
+    if current_user.is_authenticated:
+        uid = int(current_user.id)
+        wishlist_count = get_wishlist_count(uid)
+        wishlist_ids = {item['id'] for item in get_user_wishlist(uid)}
+    else:
+        wishlist_count = 0
+        wishlist_ids = set()
+    return dict(wishlist_count=wishlist_count, wishlist_ids=wishlist_ids)
 
 
 @app.route('/')

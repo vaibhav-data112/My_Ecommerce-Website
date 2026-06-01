@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+{% block title %}My Wishlist — Karvii{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <h1>My Wishlist</h1>
+  {% if items %}
+    <span class="product-count">{{ items|length }} saved item{{ 's' if items|length != 1 }}</span>
+  {% endif %}
+</div>
+
+{% if items %}
+  <div class="product-grid">
+    {% for p in items %}
+      <div class="product-card-wrap">
+        <a class="product-card" href="{{ url_for('catalog.product_detail', product_id=p['id']) }}"
+           style="text-decoration:none;display:block;position:relative;">
+
+          {% if p['image_url'] %}
+            {% if p['image_url'].startswith('http') %}
+              <img src="{{ p['image_url'] }}" alt="{{ p['name'] }}">
+            {% else %}
+              <img src="{{ url_for('static', filename=p['image_url']) }}" alt="{{ p['name'] }}">
+            {% endif %}
+          {% else %}
+            <div class="img-placeholder">{{ p['category'][0] }}</div>
+          {% endif %}
+
+          {% if p['stock'] == 0 %}
+            <span class="badge-oos">Out of stock</span>
+          {% endif %}
+
+          <p class="title mt-2">{{ p['name'] }}</p>
+          <p class="price">&#8377;{{ "%.2f"|format(p['price']) }}</p>
+          <p class="text-soft mt-1" style="font-size:var(--fs-xs);">{{ p['category'] }}</p>
+        </a>
+
+        {# Heart / remove button — top-right of card #}
+        <form method="post" action="{{ url_for('wishlist.toggle_wishlist') }}" class="heart-form">
+          <input type="hidden" name="product_id" value="{{ p['id'] }}">
+          <input type="hidden" name="next" value="{{ url_for('wishlist.view_wishlist') }}">
+          <button type="submit" class="heart-btn heart-filled" title="Remove from wishlist">&#9829;</button>
+        </form>
+
+        {# Action row below the card #}
+        <div class="wishlist-actions">
+          {% if p['stock'] > 0 %}
+            <form method="post" action="{{ url_for('wishlist.wishlist_add_to_cart') }}" style="flex:1;">
+              <input type="hidden" name="product_id" value="{{ p['id'] }}">
+              <button type="submit" class="btn btn-cart" style="width:100%;font-size:var(--fs-xs);padding:8px 12px;">
+                Add to Cart
+              </button>
+            </form>
+          {% else %}
+            <span class="btn-disabled" style="flex:1;text-align:center;font-size:var(--fs-xs);padding:8px 12px;">Out of Stock</span>
+          {% endif %}
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+
+{% else %}
+  <div class="empty-state">
+    <div style="font-size:3rem;margin-bottom:var(--space-3);">&#9825;</div>
+    <p style="font-size:var(--fs-lg);font-family:var(--font-head);color:var(--color-plum);margin-bottom:var(--space-2);">Your wishlist is empty</p>
+    <p style="color:var(--color-text-soft);margin-bottom:var(--space-4);">Save products you love by clicking the heart icon.</p>
+    <a href="{{ url_for('catalog.product_list') }}" class="btn btn-primary">Shop Now</a>
+  </div>
+{% endif %}
+
+{% endblock %}
