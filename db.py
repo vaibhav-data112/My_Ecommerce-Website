@@ -379,6 +379,33 @@ def migrate_db():
             )
         """)
 
+        # users — phone, avatar, notify_email
+        users_cols = [r[1] for r in conn.execute("PRAGMA table_info(users)").fetchall()]
+        for col, ddl in [
+            ('phone',        "ALTER TABLE users ADD COLUMN phone TEXT"),
+            ('avatar',       "ALTER TABLE users ADD COLUMN avatar TEXT"),
+            ('notify_email', "ALTER TABLE users ADD COLUMN notify_email INTEGER NOT NULL DEFAULT 1"),
+        ]:
+            if col not in users_cols:
+                conn.execute(ddl)
+
+        # addresses table
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS addresses (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id      INTEGER NOT NULL,
+                full_name    TEXT    NOT NULL,
+                phone        TEXT    NOT NULL,
+                address_line TEXT    NOT NULL,
+                city         TEXT    NOT NULL,
+                state        TEXT    NOT NULL,
+                pincode      TEXT    NOT NULL,
+                is_default   INTEGER NOT NULL DEFAULT 0,
+                created_at   TEXT    DEFAULT (datetime('now')),
+                FOREIGN KEY (user_id) REFERENCES users(id)
+            )
+        """)
+
         conn.commit()
     finally:
         conn.close()
@@ -408,6 +435,141 @@ def seed_db():
             " VALUES (?, ?, ?, ?, ?, ?)",
             products,
         )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+# ---------------------------------------------------------------------------
+# Account helpers
+# ---------------------------------------------------------------------------
+
+def get_user_by_id(user_id):
+    conn = get_db()
+    try:
+        return conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+    finally:
+        conn.close()
+
+
+def update_profile(user_id, name, phone, avatar_path=None):
+    conn = get_db()
+    try:
+        if avatar_path is not None:
+            conn.execute(
+                "UPDATE users SET name=?, phone=?, avatar=? WHERE id=?",
+                (name, phone or None, avatar_path, user_id)
+            )
+        else:
+            conn.execute(
+                "UPDATE users SET name=?, phone=? WHERE id=?",
+                (name, phone or None, user_id)
+            )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def clear_avatar(user_id):
+    conn = get_db()
+    try:
+        conn.execute("UPDATE users SET avatar=NULL WHERE id=?", (user_id,))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def change_password(user_id, new_hash):
+    conn = get_db()
+    try:
+        conn.execute("UPDATE users SET password_hash=? WHERE id=?", (new_hash, user_id))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def update_notify_pref(user_id, notify_email):
+    conn = get_db()
+    try:
+        conn.execute("UPDATE users SET notify_email=? WHERE id=?", (int(notify_email), user_id))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def get_addresses(user_id):
+    conn = get_db()
+    try:
+        return conn.execute(
+            "SELECT * FROM addresses WHERE user_id=? ORDER BY is_default DESC, created_at ASC",
+            (user_id,)
+        ).fetchall()
+    finally:
+        conn.close()
+
+
+def get_address_by_id(address_id):
+    conn = get_db()
+    try:
+        return conn.execute("SELECT * FROM addresses WHERE id=?", (address_id,)).fetchone()
+    finally:
+        conn.close()
+
+
+def add_address(user_id, full_name, phone, address_line, city, state, pincode):
+    conn = get_db()
+    try:
+        count = conn.execute(
+            "SELECT COUNT(*) FROM addresses WHERE user_id=?", (user_id,)
+        ).fetchone()[0]
+        is_default = 1 if count == 0 else 0
+        conn.execute("""
+            INSERT INTO addresses (user_id, full_name, phone, address_line, city, state, pincode, is_default)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (user_id, full_name, phone, address_line, city, state, pincode, is_default))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def update_address(address_id, full_name, phone, address_line, city, state, pincode):
+    conn = get_db()
+    try:
+        conn.execute("""
+            UPDATE addresses SET full_name=?, phone=?, address_line=?, city=?, state=?, pincode=?
+            WHERE id=?
+        """, (full_name, phone, address_line, city, state, pincode, address_id))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def delete_address(user_id, address_id):
+    conn = get_db()
+    try:
+        addr = conn.execute(
+            "SELECT is_default FROM addresses WHERE id=? AND user_id=?",
+            (address_id, user_id)
+        ).fetchone()
+        conn.execute("DELETE FROM addresses WHERE id=? AND user_id=?", (address_id, user_id))
+        if addr and addr['is_default']:
+            next_addr = conn.execute(
+                "SELECT id FROM addresses WHERE user_id=? ORDER BY created_at ASC LIMIT 1",
+                (user_id,)
+            ).fetchone()
+            if next_addr:
+                conn.execute("UPDATE addresses SET is_default=1 WHERE id=?", (next_addr['id'],))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def set_default_address(user_id, address_id):
+    conn = get_db()
+    try:
+        conn.execute("UPDATE addresses SET is_default=0 WHERE user_id=?", (user_id,))
+        conn.execute("UPDATE addresses SET is_default=1 WHERE id=? AND user_id=?",
+                     (address_id, user_id))
         conn.commit()
     finally:
         conn.close()

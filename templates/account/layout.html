@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="account-layout">
+
+    <aside class="account-sidebar">
+        <div class="sidebar-avatar">
+            {% if current_user.avatar %}
+                <img src="{{ url_for('static', filename=current_user.avatar) }}"
+                     alt="{{ current_user.name }}" class="avatar-lg">
+            {% else %}
+                <div class="avatar-lg">{{ (current_user.name or current_user.email)[0]|upper }}</div>
+            {% endif %}
+            <div class="sidebar-name">{{ current_user.name or 'My Account' }}</div>
+            <div class="sidebar-email">{{ current_user.email }}</div>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="{{ url_for('account.dashboard') }}" class="{% if active=='dashboard' %}active{% endif %}">My Profile</a>
+            <a href="{{ url_for('account.addresses') }}" class="{% if active=='addresses' %}active{% endif %}">Saved Addresses</a>
+            <a href="{{ url_for('account.settings') }}" class="{% if active=='settings' %}active{% endif %}">Settings &amp; Password</a>
+            <a href="{{ url_for('orders.order_history') }}">My Orders</a>
+            <a href="{{ url_for('wishlist.view_wishlist') }}">My Wishlist</a>
+        </nav>
+    </aside>
+
+    <main class="account-content">
+        {% block account_content %}{% endblock %}
+    </main>
+
+</div>
+{% endblock %}

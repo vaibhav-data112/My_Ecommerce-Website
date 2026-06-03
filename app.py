@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from flask import Flask, render_template, url_for
 from flask_login import current_user
 
+from account import account as account_blueprint
 from admin import admin as admin_blueprint
 from auth import auth, init_google_oauth, init_login_manager
 from cart import cart
@@ -26,6 +27,7 @@ init_db()
 migrate_db()
 seed_db()
 os.makedirs(os.path.join('static', 'uploads', 'products'), exist_ok=True)
+os.makedirs(os.path.join('static', 'uploads', 'avatars'), exist_ok=True)
 
 init_login_manager(app)
 
@@ -33,6 +35,7 @@ oauth = OAuth(app)
 app.oauth = oauth
 init_google_oauth(oauth)
 
+app.register_blueprint(account_blueprint)
 app.register_blueprint(admin_blueprint)
 app.register_blueprint(auth)
 app.register_blueprint(cart)

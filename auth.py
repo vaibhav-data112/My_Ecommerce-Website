@@ -25,6 +25,9 @@ class User(UserMixin):
         self.name = row['name']
         self.email = row['email']
         self.is_admin = bool(row['is_admin']) if 'is_admin' in row.keys() else False
+        self.phone = row['phone'] if 'phone' in row.keys() else None
+        self.avatar = row['avatar'] if 'avatar' in row.keys() else None
+        self.notify_email = bool(row['notify_email']) if 'notify_email' in row.keys() else True
 
 
 def load_user_by_id(user_id):

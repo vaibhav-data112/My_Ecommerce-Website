@@ -1,0 +1,54 @@
+{% extends 'account/layout.html' %}
+{% block title %}Settings — Karvii{% endblock %}
+
+{% block account_content %}
+<h2>Settings</h2>
+
+<!-- ── Password change ── -->
+<div class="acct-section">
+    <h3>Change Password</h3>
+    {% if is_google_only %}
+        <div class="info-box">
+            Your account uses Google Sign-In. Password change is not available for Google accounts.
+        </div>
+    {% else %}
+        <form method="post" class="acct-form">
+            <input type="hidden" name="action" value="password">
+            <div class="form-group">
+                <label class="form-label" for="current_password">Current Password</label>
+                <input type="password" id="current_password" name="current_password"
+                       class="form-input" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="new_password">New Password</label>
+                <input type="password" id="new_password" name="new_password"
+                       class="form-input" minlength="8" required>
+                <p class="form-hint">Minimum 8 characters.</p>
+            </div>
+            <div class="form-group">
+                <label class="form-label" for="confirm_password">Confirm New Password</label>
+                <input type="password" id="confirm_password" name="confirm_password"
+                       class="form-input" minlength="8" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Update Password</button>
+        </form>
+    {% endif %}
+</div>
+
+<!-- ── Notification preferences ── -->
+<div class="acct-section" style="margin-top: var(--space-5);">
+    <h3>Notification Preferences</h3>
+    <form method="post" class="acct-form">
+        <input type="hidden" name="action" value="notifications">
+        <div class="form-check-row">
+            <input type="checkbox" id="notify_email" name="notify_email"
+                   class="form-checkbox"
+                   {% if user and user['notify_email'] %}checked{% endif %}>
+            <label for="notify_email" class="form-check-label">
+                Receive email notifications about orders and offers
+            </label>
+        </div>
+        <button type="submit" class="btn btn-primary" style="margin-top:var(--space-3);">Save Preferences</button>
+    </form>
+</div>
+{% endblock %}

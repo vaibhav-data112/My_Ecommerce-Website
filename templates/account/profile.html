@@ -1,0 +1,70 @@
+{% extends 'account/layout.html' %}
+{% block title %}Edit Profile — Karvii{% endblock %}
+
+{% block account_content %}
+<h2>Edit Profile</h2>
+
+<!-- ── Profile photo (optional) ── -->
+<div class="photo-section">
+    <div class="photo-preview">
+        {% if user and user['avatar'] %}
+            <img src="{{ url_for('static', filename=user['avatar']) }}"
+                 alt="{{ current_user.name }}" class="avatar-hero">
+        {% else %}
+            <div class="avatar-hero avatar-hero-letter">
+                {{ (current_user.name or current_user.email)[0]|upper }}
+            </div>
+        {% endif %}
+    </div>
+    <div class="photo-actions">
+        <p class="form-label">Profile Photo <span class="optional">(optional)</span></p>
+        <form method="post" enctype="multipart/form-data" action="{{ url_for('account.profile') }}"
+              id="photo-upload-form" style="display:none">
+            <input type="hidden" name="name"
+                   value="{{ user['name'] if user else current_user.name }}">
+            <input type="hidden" name="phone"
+                   value="{{ user['phone'] or '' if user else '' }}">
+            <input type="file" name="avatar" id="avatar-input"
+                   accept=".jpg,.jpeg,.png,.webp"
+                   onchange="document.getElementById('photo-upload-form').submit()">
+        </form>
+        <button type="button" class="btn btn-outline btn-sm"
+                onclick="document.getElementById('avatar-input').click()">
+            {{ 'Change Photo' if user and user['avatar'] else 'Upload Photo' }}
+        </button>
+        {% if user and user['avatar'] %}
+            <form method="post"
+                  action="{{ url_for('account.delete_avatar') }}"
+                  style="display:inline"
+                  onsubmit="return confirm('Remove profile photo?')">
+                <button type="submit" class="btn btn-danger btn-sm">Remove Photo</button>
+            </form>
+        {% endif %}
+        <p class="form-hint">JPG, PNG or WEBP · max 5 MB</p>
+    </div>
+</div>
+
+<!-- ── Profile details form ── -->
+<form method="post" class="acct-form" style="margin-top: var(--space-4);">
+    <div class="form-group">
+        <label class="form-label" for="name">Full Name <span class="required">*</span></label>
+        <input type="text" id="name" name="name" class="form-input"
+               value="{{ user['name'] if user else current_user.name }}" required>
+    </div>
+
+    <div class="form-group">
+        <label class="form-label" for="phone">Phone Number <span class="optional">(optional)</span></label>
+        <input type="tel" id="phone" name="phone" class="form-input"
+               value="{{ user['phone'] or '' if user else '' }}"
+               placeholder="10-digit mobile number">
+    </div>
+
+    <div class="form-group">
+        <label class="form-label">Email</label>
+        <input type="email" class="form-input" value="{{ current_user.email }}" readonly disabled>
+        <p class="form-hint">Email cannot be changed.</p>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Save Changes</button>
+</form>
+{% endblock %}

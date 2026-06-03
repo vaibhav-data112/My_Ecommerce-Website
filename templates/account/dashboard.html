@@ -1,0 +1,46 @@
+{% extends 'account/layout.html' %}
+{% block title %}My Account — Karvii{% endblock %}
+
+{% block account_content %}
+<div class="acct-greeting">
+    <div class="greeting-avatar">
+        {% if current_user.avatar %}
+            <img src="{{ url_for('static', filename=current_user.avatar) }}"
+                 alt="{{ current_user.name }}" class="avatar-hero">
+        {% else %}
+            <div class="avatar-hero avatar-hero-letter">{{ (current_user.name or current_user.email)[0]|upper }}</div>
+        {% endif %}
+    </div>
+    <div class="greeting-text">
+        <h1>Hello, {{ current_user.name or 'there' }}!</h1>
+        <p class="member-since">
+            Member since {{ user['created_at'][:10] if user and user['created_at'] else 'recently' }}
+            &nbsp;&middot;&nbsp; {{ current_user.email }}
+        </p>
+        <a href="{{ url_for('account.profile') }}" class="btn btn-outline" style="margin-top:12px;">Edit Profile</a>
+    </div>
+</div>
+
+<div class="quick-links">
+    <a href="{{ url_for('orders.order_history') }}" class="quick-link-card">
+        <div class="ql-icon">🛍</div>
+        <div class="ql-label">My Orders</div>
+        <div class="ql-count">{{ order_count }} order{{ 's' if order_count != 1 else '' }}</div>
+    </a>
+    <a href="{{ url_for('wishlist.view_wishlist') }}" class="quick-link-card">
+        <div class="ql-icon">♡</div>
+        <div class="ql-label">My Wishlist</div>
+        <div class="ql-count">{{ wishlist_count_acct }} item{{ 's' if wishlist_count_acct != 1 else '' }}</div>
+    </a>
+    <a href="{{ url_for('account.addresses') }}" class="quick-link-card">
+        <div class="ql-icon">📍</div>
+        <div class="ql-label">Saved Addresses</div>
+        <div class="ql-count">Manage</div>
+    </a>
+    <a href="{{ url_for('account.settings') }}" class="quick-link-card">
+        <div class="ql-icon">⚙</div>
+        <div class="ql-label">Settings</div>
+        <div class="ql-count">Password &amp; Notifications</div>
+    </a>
+</div>
+{% endblock %}

@@ -23,21 +23,48 @@
             {% if current_user.is_authenticated %}
                 <a href="{{ url_for('orders.order_history') }}">My Orders</a>
                 <a href="{{ url_for('wishlist.view_wishlist') }}">
-                    Wishlist{% if wishlist_count > 0 %}<span class="cart-badge">{{ wishlist_count }}</span>{% endif %}
+                    My Wishlist{% if wishlist_count > 0 %}<span class="cart-badge">{{ wishlist_count }}</span>{% endif %}
                 </a>
+                <a href="{{ url_for('account.addresses') }}">Saved Addresses</a>
+                <a href="{{ url_for('account.settings') }}">Settings</a>
+                <span class="nav-sep"></span>
                 <a href="{{ url_for('cart.view_cart') }}">
                     Cart{% if cart_count > 0 %}<span class="cart-badge">{{ cart_count }}</span>{% endif %}
                 </a>
                 {% if current_user.is_admin %}
                     <a href="{{ url_for('admin.dashboard') }}" class="admin-link">Admin</a>
                 {% endif %}
-                <span class="user-name">{{ current_user.name }}</span>
-                <form method="post" action="/logout" style="display:inline">
-                    <button type="submit">Logout</button>
-                </form>
+                <details class="account-menu nav-avatar-right">
+                    <summary class="avatar-circle" title="{{ current_user.name }}">
+                        {% if current_user.avatar %}
+                            <img src="{{ url_for('static', filename=current_user.avatar) }}"
+                                 alt="{{ current_user.name }}" class="avatar-img">
+                        {% else %}
+                            {{ (current_user.name or current_user.email)[0]|upper }}
+                        {% endif %}
+                    </summary>
+                    <div class="account-dropdown">
+                        <div class="dropdown-header">{{ current_user.name or current_user.email }}</div>
+                        <a href="{{ url_for('account.dashboard') }}">My Profile</a>
+                        <div class="dropdown-divider"></div>
+                        <form method="post" action="/logout">
+                            <button type="submit" class="dropdown-logout">Logout</button>
+                        </form>
+                    </div>
+                </details>
             {% else %}
-                <a href="/login">Login</a>
-                <a href="/signup">Sign Up</a>
+                <div class="login-hover-wrap">
+                    <a href="/login" class="btn btn-outline nav-login-btn">Login</a>
+                    <div class="login-preview-dropdown">
+                        <div class="preview-header">Login to access</div>
+                        <span class="preview-link">My Profile</span>
+                        <span class="preview-link">My Orders</span>
+                        <span class="preview-link">My Wishlist</span>
+                        <span class="preview-link">Saved Addresses</span>
+                        <span class="preview-link">Settings</span>
+                    </div>
+                </div>
+                <a href="/signup" class="btn btn-primary" style="padding:7px 16px;">Sign Up</a>
             {% endif %}
         </div>
     </div>
