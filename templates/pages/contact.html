@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% block title %}Contact Us — Karvii{% endblock %}
+
+{% block content %}
+<div class="static-page">
+    <h1>Contact Us</h1>
+    <div class="card static-card">
+        <p class="static-lead">
+            We would love to hear from you. Whether you have a question about an order, need styling advice, or just want to say hello — we are here for you.
+        </p>
+
+        <h2>Get in Touch</h2>
+        <div class="contact-grid">
+            <div class="contact-item">
+                <span class="contact-icon">✉</span>
+                <div>
+                    <strong>Email</strong>
+                    <p><a href="mailto:vaibhavtiw2008@gmail.com">vaibhavtiw2008@gmail.com</a></p>
+                    <small>We respond within 24 hours.</small>
+                </div>
+            </div>
+            <div class="contact-item">
+                <span class="contact-icon">💬</span>
+                <div>
+                    <strong>WhatsApp</strong>
+                    <p>Message us on WhatsApp for quick support.</p>
+                    <small>Available Mon–Sat, 10 AM – 7 PM IST</small>
+                </div>
+            </div>
+            <div class="contact-item">
+                <span class="contact-icon">📦</span>
+                <div>
+                    <strong>Order Support</strong>
+                    <p>For order tracking and returns, visit <a href="{{ url_for('orders.order_history') }}">My Orders</a>.</p>
+                </div>
+            </div>
+        </div>
+
+        <h2 style="margin-top: var(--space-5);">Frequently Asked</h2>
+        <ul class="static-list">
+            <li><strong>How long does delivery take?</strong> — 3–7 business days across India.</li>
+            <li><strong>Can I return an item?</strong> — Yes, within 7 days of delivery. See our <a href="{{ url_for('pages.terms') }}">Return Policy</a>.</li>
+            <li><strong>Is my payment secure?</strong> — All payments are processed via Razorpay, a PCI-DSS compliant gateway.</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}

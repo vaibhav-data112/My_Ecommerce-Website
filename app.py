@@ -7,6 +7,7 @@ from flask_login import current_user
 
 from account import account as account_blueprint
 from admin import admin as admin_blueprint
+from pages import pages as pages_blueprint
 from auth import auth, init_google_oauth, init_login_manager
 from cart import cart
 from catalog import catalog
@@ -19,6 +20,18 @@ from reviews import reviews
 from wishlist import wishlist
 
 load_dotenv()
+
+SOCIAL_LINKS = [
+    {'name': 'WhatsApp',  'icon': 'whatsapp',  'url': ''},
+    {'name': 'Instagram', 'icon': 'instagram', 'url': ''},
+    {'name': 'YouTube',   'icon': 'youtube',   'url': ''},
+    {'name': 'Facebook',  'icon': 'facebook',  'url': ''},
+    {'name': 'X',         'icon': 'twitter',   'url': ''},
+    {'name': 'LinkedIn',  'icon': 'linkedin',  'url': ''},
+    {'name': 'Pinterest', 'icon': 'pinterest', 'url': ''},
+    {'name': 'Telegram',  'icon': 'telegram',  'url': ''},
+    {'name': 'Email',     'icon': 'email',     'url': 'mailto:vaibhavtiw2008@gmail.com'},
+]
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-change-in-production')
@@ -37,6 +50,7 @@ init_google_oauth(oauth)
 
 app.register_blueprint(account_blueprint)
 app.register_blueprint(admin_blueprint)
+app.register_blueprint(pages_blueprint)
 app.register_blueprint(auth)
 app.register_blueprint(cart)
 app.register_blueprint(catalog)
@@ -45,6 +59,11 @@ app.register_blueprint(orders)
 app.register_blueprint(payment)
 app.register_blueprint(reviews)
 app.register_blueprint(wishlist)
+
+
+@app.context_processor
+def inject_footer_data():
+    return dict(social_links=[s for s in SOCIAL_LINKS if s['url']])
 
 
 @app.context_processor

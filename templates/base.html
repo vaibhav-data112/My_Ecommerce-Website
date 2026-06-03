@@ -85,7 +85,81 @@
 
 <footer class="footer">
     <div class="container">
-        <p>&copy; 2024 <a href="/">Karvii</a> &mdash; Premium Boutique Fashion</p>
+
+        <div class="footer-grid">
+
+            <div class="footer-col">
+                <h4>ABOUT</h4>
+                <ul>
+                    <li><a href="{{ url_for('pages.about') }}">About Us</a></li>
+                    <li><a href="{{ url_for('pages.contact') }}">Contact Us</a></li>
+                    <li><a href="#">Our Story</a></li>
+                    <li><a href="#">Careers</a></li>
+                </ul>
+            </div>
+
+            <div class="footer-col">
+                <h4>HELP</h4>
+                <ul>
+                    <li><a href="#">FAQ</a></li>
+                    <li><a href="#">Shipping Info</a></li>
+                    <li><a href="#">Returns &amp; Refunds</a></li>
+                    <li><a href="{{ url_for('orders.order_history') }}">Track Order</a></li>
+                </ul>
+            </div>
+
+            <div class="footer-col">
+                <h4>POLICY</h4>
+                <ul>
+                    <li><a href="{{ url_for('pages.privacy') }}">Privacy Policy</a></li>
+                    <li><a href="{{ url_for('pages.terms') }}">Terms of Use</a></li>
+                    <li><a href="#">Return Policy</a></li>
+                </ul>
+            </div>
+
+            <div class="footer-col">
+                <h4>SHOP</h4>
+                <ul>
+                    <li><a href="{{ url_for('catalog.product_list') }}">All Products</a></li>
+                    <li><a href="{{ url_for('catalog.product_list') }}?category=Clothing">Clothing</a></li>
+                    <li><a href="{{ url_for('orders.order_history') }}">My Orders</a></li>
+                    <li><a href="{{ url_for('wishlist.view_wishlist') }}">Wishlist</a></li>
+                    <li><a href="{{ url_for('account.dashboard') }}">My Account</a></li>
+                </ul>
+            </div>
+
+            <div class="footer-col footer-col-connect">
+                <h4>CONNECT</h4>
+                {% if social_links %}
+                <div class="footer-social">
+                    {% for s in social_links %}
+                    <a href="{{ s.url }}" class="social-btn" aria-label="{{ s.name }}"
+                       {% if not s.url.startswith('mailto') %}target="_blank" rel="noopener"{% endif %}>
+                        {% include 'partials/social_icon_' ~ s.icon ~ '.html' ignore missing %}
+                    </a>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="footer-social-empty">Find us online — coming soon!</p>
+                {% endif %}
+            </div>
+
+        </div>
+
+        <div class="footer-newsletter">
+            <p class="footer-newsletter-label">Stay in the loop</p>
+            <form class="footer-newsletter-form" onsubmit="return false;">
+                <input type="email" placeholder="Your email address" aria-label="Email for newsletter">
+                <button type="submit">Subscribe</button>
+            </form>
+            <p class="footer-newsletter-note">No spam. Unsubscribe anytime.</p>
+        </div>
+
+        <div class="footer-bottom">
+            <span>&copy; 2026 <a href="/">Karvii</a>. All rights reserved.</span>
+            <span class="footer-made">Crafted in India &#10084;&#65039;</span>
+        </div>
+
     </div>
 </footer>
 
