@@ -2,12 +2,12 @@ import os
 
 from authlib.integrations.flask_client import OAuth
 from dotenv import load_dotenv
-from flask import Flask, render_template, url_for
+from flask import Flask, jsonify, send_from_directory
+from flask_cors import CORS
 from flask_login import current_user
 
 from account import account as account_blueprint
 from admin import admin as admin_blueprint
-from pages import pages as pages_blueprint
 from auth import auth, init_google_oauth, init_login_manager
 from cart import cart
 from catalog import catalog
@@ -21,20 +21,13 @@ from wishlist import wishlist
 
 load_dotenv()
 
-SOCIAL_LINKS = [
-    {'name': 'WhatsApp',  'icon': 'whatsapp',  'url': ''},
-    {'name': 'Instagram', 'icon': 'instagram', 'url': ''},
-    {'name': 'YouTube',   'icon': 'youtube',   'url': ''},
-    {'name': 'Facebook',  'icon': 'facebook',  'url': ''},
-    {'name': 'X',         'icon': 'twitter',   'url': ''},
-    {'name': 'LinkedIn',  'icon': 'linkedin',  'url': ''},
-    {'name': 'Pinterest', 'icon': 'pinterest', 'url': ''},
-    {'name': 'Telegram',  'icon': 'telegram',  'url': ''},
-    {'name': 'Email',     'icon': 'email',     'url': 'mailto:vaibhavtiw2008@gmail.com'},
-]
-
-app = Flask(__name__)
+app = Flask(__name__, static_folder='static')
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-change-in-production')
+
+CORS(app, supports_credentials=True, origins=[
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+])
 
 init_db()
 migrate_db()
@@ -50,7 +43,6 @@ init_google_oauth(oauth)
 
 app.register_blueprint(account_blueprint)
 app.register_blueprint(admin_blueprint)
-app.register_blueprint(pages_blueprint)
 app.register_blueprint(auth)
 app.register_blueprint(cart)
 app.register_blueprint(catalog)
@@ -61,34 +53,33 @@ app.register_blueprint(reviews)
 app.register_blueprint(wishlist)
 
 
-@app.context_processor
-def inject_footer_data():
-    return dict(social_links=[s for s in SOCIAL_LINKS if s['url']])
-
-
-@app.context_processor
-def inject_cart_count():
-    count = get_cart_count(int(current_user.id)) if current_user.is_authenticated else 0
-    return dict(cart_count=count)
-
-
-@app.context_processor
-def inject_wishlist_data():
-    if current_user.is_authenticated:
-        uid = int(current_user.id)
-        wishlist_count = get_wishlist_count(uid)
-        wishlist_ids = {item['id'] for item in get_user_wishlist(uid)}
-    else:
-        wishlist_count = 0
-        wishlist_ids = set()
-    return dict(wishlist_count=wishlist_count, wishlist_ids=wishlist_ids)
-
-
-@app.route('/')
-def index():
+@app.route('/api/')
+@app.route('/api')
+def api_index():
     products = get_all_products()[:8]
     ratings = get_all_avg_ratings()
-    return render_template('index.html', products=products, ratings=ratings)
+    featured = []
+    for p in products:
+        pd = dict(p)
+        pid = pd['id']
+        pd['avg_rating'] = ratings.get(pid, {}).get('avg')
+        pd['review_count'] = ratings.get(pid, {}).get('count', 0)
+        featured.append(pd)
+    return jsonify({'featured_products': featured})
+
+
+REACT_DIST = os.path.join(os.path.dirname(__file__), 'frontend', 'dist')
+
+
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>')
+def serve_react(path):
+    if os.path.exists(REACT_DIST):
+        full = os.path.join(REACT_DIST, path)
+        if path and os.path.exists(full) and os.path.isfile(full):
+            return send_from_directory(REACT_DIST, path)
+        return send_from_directory(REACT_DIST, 'index.html')
+    return jsonify({'message': 'Run: cd frontend && npm install && npm run build'}), 503
 
 
 if __name__ == '__main__':

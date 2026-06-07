@@ -1,8 +1,7 @@
-import functools
 import os
 
 from flask import (
-    Blueprint, flash, redirect, render_template, request, session, url_for
+    Blueprint, jsonify, redirect, request, url_for
 )
 from flask_login import (
     LoginManager, UserMixin, current_user, login_required as _login_required,
@@ -14,10 +13,8 @@ from db import get_db
 
 auth = Blueprint('auth', __name__)
 
+login_required = _login_required
 
-# ---------------------------------------------------------------------------
-# User model
-# ---------------------------------------------------------------------------
 
 class User(UserMixin):
     def __init__(self, row):
@@ -28,6 +25,17 @@ class User(UserMixin):
         self.phone = row['phone'] if 'phone' in row.keys() else None
         self.avatar = row['avatar'] if 'avatar' in row.keys() else None
         self.notify_email = bool(row['notify_email']) if 'notify_email' in row.keys() else True
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'email': self.email,
+            'is_admin': self.is_admin,
+            'phone': self.phone,
+            'avatar': self.avatar,
+            'notify_email': self.notify_email,
+        }
 
 
 def load_user_by_id(user_id):
@@ -42,129 +50,93 @@ def load_user_by_id(user_id):
 def init_login_manager(app):
     lm = LoginManager(app)
     lm.login_view = 'auth.login'
-    lm.login_message = 'Please log in to access this page.'
 
     @lm.user_loader
     def user_loader(user_id):
         return load_user_by_id(user_id)
 
-
-# ---------------------------------------------------------------------------
-# login_required decorator (re-exports Flask-Login's but with `next` support)
-# ---------------------------------------------------------------------------
-
-login_required = _login_required
+    @lm.unauthorized_handler
+    def unauthorized():
+        return jsonify({'error': 'Authentication required', 'login_required': True}), 401
 
 
 # ---------------------------------------------------------------------------
-# Signup
+# JSON API — signup / login / logout / me
 # ---------------------------------------------------------------------------
 
-@auth.route('/signup', methods=['GET'])
-def signup():
-    return render_template('auth/signup.html')
+@auth.route('/api/auth/signup', methods=['POST'])
+def api_signup():
+    data = request.get_json(silent=True) or {}
+    name     = data.get('name', '').strip()
+    email    = data.get('email', '').strip().lower()
+    password = data.get('password', '')
+    confirm  = data.get('confirm_password', '')
 
-
-@auth.route('/signup', methods=['POST'])
-def signup_post():
-    name = request.form.get('name', '').strip()
-    email = request.form.get('email', '').strip().lower()
-    password = request.form.get('password', '')
-    confirm = request.form.get('confirm_password', '')
-
-    error = None
     if not name:
-        error = 'Name is required.'
-    elif not email or '@' not in email:
-        error = 'A valid email address is required.'
-    elif len(password) < 8:
-        error = 'Password must be at least 8 characters.'
-    elif password != confirm:
-        error = 'Passwords do not match.'
-
-    if error:
-        flash(error, 'error')
-        return render_template('auth/signup.html', name=name, email=email)
+        return jsonify({'error': 'Name is required.'}), 400
+    if not email or '@' not in email:
+        return jsonify({'error': 'A valid email address is required.'}), 400
+    if len(password) < 8:
+        return jsonify({'error': 'Password must be at least 8 characters.'}), 400
+    if password != confirm:
+        return jsonify({'error': 'Passwords do not match.'}), 400
 
     conn = get_db()
     try:
-        existing = conn.execute(
-            "SELECT id FROM users WHERE email = ?", (email,)
-        ).fetchone()
+        existing = conn.execute("SELECT id FROM users WHERE email = ?", (email,)).fetchone()
         if existing:
-            flash('An account with that email is already registered.', 'error')
-            return render_template('auth/signup.html', name=name, email=email)
-
+            return jsonify({'error': 'An account with that email already exists.'}), 409
         conn.execute(
             "INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)",
             (name, email, generate_password_hash(password)),
         )
         conn.commit()
-        row = conn.execute(
-            "SELECT * FROM users WHERE email = ?", (email,)
-        ).fetchone()
+        row = conn.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
     finally:
         conn.close()
 
-    login_user(User(row))
-    return redirect(url_for('index'))
+    user = User(row)
+    login_user(user)
+    return jsonify({'user': user.to_dict()}), 201
 
 
-# ---------------------------------------------------------------------------
-# Login
-# ---------------------------------------------------------------------------
-
-@auth.route('/login', methods=['GET'])
-def login():
-    return render_template('auth/login.html')
-
-
-@auth.route('/login', methods=['POST'])
-def login_post():
-    email = request.form.get('email', '').strip().lower()
-    password = request.form.get('password', '')
-    remember = bool(request.form.get('remember'))
-    next_page = request.args.get('next') or request.form.get('next') or url_for('index')
+@auth.route('/api/auth/login', methods=['POST'])
+def api_login():
+    data     = request.get_json(silent=True) or {}
+    email    = data.get('email', '').strip().lower()
+    password = data.get('password', '')
+    remember = bool(data.get('remember', False))
 
     conn = get_db()
     try:
-        row = conn.execute(
-            "SELECT * FROM users WHERE email = ?", (email,)
-        ).fetchone()
+        row = conn.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
     finally:
         conn.close()
 
     if not row or not row['password_hash'] or not check_password_hash(row['password_hash'], password):
-        flash('Invalid email or password.', 'error')
-        return render_template('auth/login.html', email=email, next=next_page)
+        return jsonify({'error': 'Invalid email or password.'}), 401
 
-    login_user(User(row), remember=remember)
-    return redirect(next_page)
+    user = User(row)
+    login_user(user, remember=remember)
+    return jsonify({'user': user.to_dict()})
 
 
-# ---------------------------------------------------------------------------
-# Logout
-# ---------------------------------------------------------------------------
-
-@auth.route('/logout', methods=['GET', 'POST'])
-def logout():
+@auth.route('/api/auth/logout', methods=['POST'])
+def api_logout():
     logout_user()
-    return redirect(url_for('auth.login'))
+    return jsonify({'success': True})
+
+
+@auth.route('/api/auth/me')
+def api_me():
+    if current_user.is_authenticated:
+        return jsonify({'user': current_user.to_dict()})
+    return jsonify({'user': None})
 
 
 # ---------------------------------------------------------------------------
-# Google OAuth
+# Google OAuth (keep original paths — uses redirects)
 # ---------------------------------------------------------------------------
-
-def init_google_oauth(oauth):
-    oauth.register(
-        name='google',
-        client_id=os.environ.get('GOOGLE_CLIENT_ID'),
-        client_secret=os.environ.get('GOOGLE_CLIENT_SECRET'),
-        server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
-        client_kwargs={'scope': 'openid email profile'},
-    )
-
 
 @auth.route('/login/google')
 def google_login():
@@ -179,8 +151,7 @@ def google_callback():
     try:
         token = current_app.oauth.google.authorize_access_token()
     except Exception:
-        flash('Google login failed. Please try again.', 'error')
-        return redirect(url_for('auth.login'))
+        return redirect('/?error=google_login_failed')
 
     info = token.get('userinfo') or current_app.oauth.google.userinfo(token=token)
     google_id = info['sub']
@@ -189,23 +160,14 @@ def google_callback():
 
     conn = get_db()
     try:
-        row = conn.execute(
-            "SELECT * FROM users WHERE google_id = ?", (google_id,)
-        ).fetchone()
+        row = conn.execute("SELECT * FROM users WHERE google_id = ?", (google_id,)).fetchone()
 
         if not row and email:
-            row = conn.execute(
-                "SELECT * FROM users WHERE email = ?", (email,)
-            ).fetchone()
+            row = conn.execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
             if row:
-                conn.execute(
-                    "UPDATE users SET google_id = ? WHERE id = ?",
-                    (google_id, row['id']),
-                )
+                conn.execute("UPDATE users SET google_id = ? WHERE id = ?", (google_id, row['id']))
                 conn.commit()
-                row = conn.execute(
-                    "SELECT * FROM users WHERE id = ?", (row['id'],)
-                ).fetchone()
+                row = conn.execute("SELECT * FROM users WHERE id = ?", (row['id'],)).fetchone()
 
         if not row:
             conn.execute(
@@ -213,11 +175,19 @@ def google_callback():
                 (name, email, google_id),
             )
             conn.commit()
-            row = conn.execute(
-                "SELECT * FROM users WHERE google_id = ?", (google_id,)
-            ).fetchone()
+            row = conn.execute("SELECT * FROM users WHERE google_id = ?", (google_id,)).fetchone()
     finally:
         conn.close()
 
     login_user(User(row))
-    return redirect(url_for('index'))
+    return redirect('/')
+
+
+def init_google_oauth(oauth):
+    oauth.register(
+        name='google',
+        client_id=os.environ.get('GOOGLE_CLIENT_ID'),
+        client_secret=os.environ.get('GOOGLE_CLIENT_SECRET'),
+        server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
+        client_kwargs={'scope': 'openid email profile'},
+    )

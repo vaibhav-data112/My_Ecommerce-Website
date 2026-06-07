@@ -2,7 +2,7 @@ import os
 import uuid
 from functools import wraps
 
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, jsonify, redirect, request, url_for
 from flask_login import current_user
 from werkzeug.utils import secure_filename
 
@@ -12,38 +12,36 @@ from db import (
     get_order_by_id, get_product_by_id, update_order_status, update_product,
 )
 
-admin = Blueprint('admin', __name__, url_prefix='/admin')
+admin = Blueprint('admin', __name__, url_prefix='/api/admin')
 
 ALLOWED_STATUSES = ['paid', 'shipped', 'delivered', 'cancelled']
-UPLOAD_FOLDER = os.path.join('static', 'uploads', 'products')
-ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png', 'webp'}
-MAX_FILE_BYTES = 5 * 1024 * 1024
+UPLOAD_FOLDER    = os.path.join('static', 'uploads', 'products')
+ALLOWED_EXT      = {'jpg', 'jpeg', 'png', 'webp'}
+MAX_FILE_BYTES   = 5 * 1024 * 1024
 
 
 def admin_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         if not current_user.is_authenticated:
-            return redirect(url_for('auth.login'))
+            return jsonify({'error': 'Authentication required', 'login_required': True}), 401
         if not current_user.is_admin:
-            flash('Not authorised.', 'error')
-            return redirect(url_for('catalog.product_list'))
+            return jsonify({'error': 'Admin access required.'}), 403
         return f(*args, **kwargs)
     return decorated
 
 
 def _save_uploaded_image():
-    """Validate and save an uploaded image file. Returns (path, error)."""
     file = request.files.get('image_file')
     if not file or not file.filename:
         return None, None
     ext = file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else ''
-    if ext not in ALLOWED_EXTENSIONS:
-        return None, f'Invalid file type. Allowed types: jpg, jpeg, png, webp.'
+    if ext not in ALLOWED_EXT:
+        return None, 'Invalid file type. Allowed: jpg, jpeg, png, webp.'
     data = file.read()
     if len(data) > MAX_FILE_BYTES:
         return None, 'File too large. Maximum size is 5 MB.'
-    safe_name = secure_filename(file.filename)
+    safe_name   = secure_filename(file.filename)
     unique_name = f'{uuid.uuid4().hex}_{safe_name}'
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
     with open(os.path.join(UPLOAD_FOLDER, unique_name), 'wb') as f:
@@ -52,13 +50,11 @@ def _save_uploaded_image():
 
 
 def _validate_product_form(form):
-    name = form.get('name', '').strip()
+    name        = form.get('name', '').strip()
     description = form.get('description', '').strip()
-    image_url = form.get('image_url', '').strip()
-    category = form.get('category', '').strip()
-    error = None
-    price = None
-    stock = None
+    image_url   = form.get('image_url', '').strip()
+    category    = form.get('category', '').strip()
+    error = price = stock = None
 
     if not name:
         error = 'Product name is required.'
@@ -100,11 +96,18 @@ def dashboard():
     conn = get_db()
     try:
         product_count = conn.execute("SELECT COUNT(*) FROM products").fetchone()[0]
-        order_count = conn.execute("SELECT COUNT(*) FROM orders").fetchone()[0]
+        order_count   = conn.execute("SELECT COUNT(*) FROM orders").fetchone()[0]
+        revenue       = conn.execute(
+            "SELECT COALESCE(SUM(total),0) FROM orders WHERE status != 'cancelled'"
+        ).fetchone()[0]
     finally:
         conn.close()
-    return render_template('admin/dashboard.html',
-                           product_count=product_count, order_count=order_count)
+    return jsonify({
+        'product_count': product_count,
+        'order_count':   order_count,
+        'revenue':       revenue,
+        'categories':    CATEGORIES,
+    })
 
 
 # ---------------------------------------------------------------------------
@@ -115,49 +118,41 @@ def dashboard():
 @admin_required
 def products():
     all_products = get_all_products()
-    return render_template('admin/products.html', products=all_products)
+    return jsonify({'products': [dict(p) for p in all_products], 'categories': CATEGORIES})
 
 
-@admin.route('/products/add', methods=['GET', 'POST'])
+@admin.route('/products/add', methods=['POST'])
 @admin_required
 def add_product():
-    if request.method == 'POST':
-        error, name, description, price, stock, category, image_url = \
-            _validate_product_form(request.form)
-        if error:
-            flash(error, 'error')
-            return render_template('admin/product_form.html',
-                                   action='Add', categories=CATEGORIES,
-                                   form=request.form)
-        create_product(name, description, price, stock, category, image_url)
-        flash('Product added successfully.', 'success')
-        return redirect(url_for('admin.products'))
-    return render_template('admin/product_form.html',
-                           action='Add', categories=CATEGORIES, form={})
+    error, name, description, price, stock, category, image_url = \
+        _validate_product_form(request.form)
+    if error:
+        return jsonify({'error': error}), 422
+    create_product(name, description, price, stock, category, image_url)
+    return jsonify({'success': True, 'message': 'Product added successfully.'}), 201
 
 
-@admin.route('/products/<int:product_id>/edit', methods=['GET', 'POST'])
+@admin.route('/products/<int:product_id>', methods=['GET'])
+@admin_required
+def get_product(product_id):
+    product = get_product_by_id(product_id)
+    if not product:
+        return jsonify({'error': 'Product not found.'}), 404
+    return jsonify({'product': dict(product), 'categories': CATEGORIES})
+
+
+@admin.route('/products/<int:product_id>/edit', methods=['POST'])
 @admin_required
 def edit_product(product_id):
     product = get_product_by_id(product_id)
     if not product:
-        flash('Product not found.', 'error')
-        return redirect(url_for('admin.products'))
-
-    if request.method == 'POST':
-        error, name, description, price, stock, category, image_url = \
-            _validate_product_form(request.form)
-        if error:
-            flash(error, 'error')
-            return render_template('admin/product_form.html',
-                                   action='Edit', categories=CATEGORIES,
-                                   form=request.form, product=product)
-        update_product(product_id, name, description, price, stock, category, image_url)
-        flash('Product updated successfully.', 'success')
-        return redirect(url_for('admin.products'))
-    return render_template('admin/product_form.html',
-                           action='Edit', categories=CATEGORIES,
-                           form=product, product=product)
+        return jsonify({'error': 'Product not found.'}), 404
+    error, name, description, price, stock, category, image_url = \
+        _validate_product_form(request.form)
+    if error:
+        return jsonify({'error': error}), 422
+    update_product(product_id, name, description, price, stock, category, image_url)
+    return jsonify({'success': True, 'message': 'Product updated successfully.'})
 
 
 @admin.route('/products/<int:product_id>/delete', methods=['POST'])
@@ -165,11 +160,9 @@ def edit_product(product_id):
 def delete_product_route(product_id):
     product = get_product_by_id(product_id)
     if not product:
-        flash('Product not found.', 'error')
-        return redirect(url_for('admin.products'))
+        return jsonify({'error': 'Product not found.'}), 404
     delete_product(product_id)
-    flash(f'"{product["name"]}" has been deleted.', 'success')
-    return redirect(url_for('admin.products'))
+    return jsonify({'success': True, 'message': f'"{product["name"]}" has been deleted.'})
 
 
 # ---------------------------------------------------------------------------
@@ -180,8 +173,10 @@ def delete_product_route(product_id):
 @admin_required
 def orders():
     all_orders = get_all_orders_admin()
-    return render_template('admin/orders.html',
-                           orders=all_orders, allowed_statuses=ALLOWED_STATUSES)
+    return jsonify({
+        'orders':           [dict(o) for o in all_orders],
+        'allowed_statuses': ALLOWED_STATUSES,
+    })
 
 
 @admin.route('/orders/<int:order_id>/status', methods=['POST'])
@@ -189,12 +184,10 @@ def orders():
 def update_status(order_id):
     order = get_order_by_id(order_id)
     if not order:
-        flash('Order not found.', 'error')
-        return redirect(url_for('admin.orders'))
-    new_status = request.form.get('status', '').strip()
+        return jsonify({'error': 'Order not found.'}), 404
+    data       = request.get_json(silent=True) or {}
+    new_status = data.get('status', '').strip()
     if new_status not in ALLOWED_STATUSES:
-        flash('Invalid status.', 'error')
-        return redirect(url_for('admin.orders'))
+        return jsonify({'error': 'Invalid status.'}), 400
     update_order_status(order_id, new_status)
-    flash(f'Order #{order_id} status updated to {new_status}.', 'success')
-    return redirect(url_for('admin.orders'))
+    return jsonify({'success': True, 'message': f'Order #{order_id} updated to {new_status}.'})

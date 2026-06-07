@@ -423,12 +423,12 @@ def seed_db():
         )
 
         products = [
-            ("Wireless Earbuds",       "Bluetooth earbuds with noise cancellation", 29.99, 50,  "Electronics", None),
-            ("Cotton T-Shirt",         "Comfortable everyday wear",                  9.99, 100, "Clothing",    None),
-            ("Yoga Mat",               "Non-slip exercise mat",                     24.99,  40, "Sports",      None),
-            ("Python Programming Book","Learn Python from scratch",                 39.99,  20, "Books",       None),
-            ("Face Moisturizer",       "Daily hydrating cream",                     14.99,  60, "Beauty",      None),
-            ("Ceramic Mug Set",        "Set of 4 ceramic mugs",                     12.99,  75, "Home",        None),
+            ("Turmeric Powder 100g",           "Pure turmeric powder with high curcumin, great for cooking and health",        89.0,  100, "Ground Spices", None),
+            ("Cumin Seeds (Jeera) 100g",        "Aromatic whole cumin seeds, perfect for tempering curries and rice",          75.0,  150, "Whole Spices",  None),
+            ("Garam Masala 100g",               "Classic blend of 12 slow-roasted whole spices, heart of Indian cooking",     120.0,   80, "Spice Blends",  None),
+            ("Organic Haldi Powder 100g",       "Certified organic turmeric with high curcumin, no additives",                149.0,   60, "Organic",       None),
+            ("Kashmiri Red Chilli Powder 100g", "Deep red colour with mild heat, ideal for tandoori and gravies",              99.0,   90, "Ground Spices", None),
+            ("Black Pepper Whole 50g",          "Premium whole peppercorns, freshly packed for maximum aroma",               110.0,  120, "Whole Spices",  None),
         ]
         conn.executemany(
             "INSERT INTO products (name, description, price, stock, category, image_url)"
