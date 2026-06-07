@@ -4,6 +4,22 @@ import { getFeatured } from '../api/products'
 import ProductCard from '../components/ProductCard'
 import Spinner from '../components/Spinner'
 
+const CATEGORIES = [
+  { name: 'Whole Spices',  icon: '🌿', desc: 'Jeera, kali mirch, laung & more' },
+  { name: 'Ground Spices', icon: '🟡', desc: 'Haldi, mirchi, dhaniya powder' },
+  { name: 'Spice Blends',  icon: '🫙', desc: 'Garam masala, chaat masala & more' },
+  { name: 'Organic',       icon: '🌱', desc: 'Certified organic & natural' },
+  { name: 'Salt',          icon: '🧂', desc: 'Rock salt, black salt & more' },
+  { name: 'Chilli',        icon: '🌶️', desc: 'Kashmiri, Byadgi, Guntur' },
+]
+
+const WHY_KARVII = [
+  { icon: '🏆', title: 'Premium Quality',  desc: 'Sourced from certified farms across India' },
+  { icon: '📦', title: 'Fresh & Pure',     desc: 'Packed to preserve maximum aroma and flavour' },
+  { icon: '🚀', title: 'Fast Delivery',    desc: 'Pan-India delivery with careful packaging' },
+  { icon: '🌿', title: 'No Additives',     desc: '100% natural, no artificial colours or preservatives' },
+]
+
 export default function HomePage() {
   const [products, setProducts] = useState([])
   const [loading, setLoading]   = useState(true)
@@ -17,10 +33,19 @@ export default function HomePage() {
 
   return (
     <>
+      {/* Offer Banner */}
+      <div className="offer-banner">
+        🌿 Free Shipping above ₹799
+        <span>|</span>
+        Pan-India Delivery
+        <span>|</span>
+        100% Natural & Pure
+      </div>
+
       {/* Hero */}
       <section className="hero">
         <div className="container">
-          <div className="hero-label">Premium Indian Spices</div>
+          <div className="hero-eyebrow">Premium Indian Spices</div>
           <h1 className="hero-title">
             Pure Spices,<br /><span>Authentic Flavours</span>
           </h1>
@@ -40,20 +65,16 @@ export default function HomePage() {
         <div className="container">
           <h2 className="section-title">Shop by Category</h2>
           <p className="section-subtitle">Explore our full range of authentic Indian spices</p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 16 }}>
-            {[
-              { name: 'Whole Spices',  icon: '🌿', desc: 'Jeera, kali mirch, laung & more' },
-              { name: 'Ground Spices', icon: '🟡', desc: 'Haldi, mirchi, dhaniya powder' },
-              { name: 'Spice Blends',  icon: '🫙', desc: 'Garam masala, chaat masala & more' },
-              { name: 'Organic',       icon: '🌱', desc: 'Certified organic & natural' },
-            ].map(c => (
-              <Link key={c.name} to={`/products?category=${encodeURIComponent(c.name)}`}
-                className="card" style={{ padding: 20, textAlign: 'center', transition: 'transform .2s' }}
-                onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-3px)'}
-                onMouseLeave={e => e.currentTarget.style.transform = ''}>
-                <div style={{ fontSize: 36, marginBottom: 10 }}>{c.icon}</div>
-                <div style={{ fontFamily: 'var(--font-head)', fontWeight: 600, color: 'var(--brown)', marginBottom: 4 }}>{c.name}</div>
-                <div style={{ fontSize: 12, color: 'var(--text-soft)' }}>{c.desc}</div>
+          <div className="category-grid">
+            {CATEGORIES.map(c => (
+              <Link
+                key={c.name}
+                to={`/products?category=${encodeURIComponent(c.name)}`}
+                className="category-card"
+              >
+                <div className="category-icon">{c.icon}</div>
+                <div className="category-name">{c.name}</div>
+                <div className="category-desc">{c.desc}</div>
               </Link>
             ))}
           </div>
@@ -77,20 +98,15 @@ export default function HomePage() {
       </section>
 
       {/* Why Karvii */}
-      <section style={{ background: 'var(--surface)', padding: '60px 0', marginBottom: 0 }}>
+      <section style={{ background: 'var(--color-surface-warm)', padding: '64px 0' }}>
         <div className="container">
           <h2 className="section-title" style={{ textAlign: 'center', marginBottom: 40 }}>Why Karvii?</h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 32, textAlign: 'center' }}>
-            {[
-              { icon: '🏆', title: 'Premium Quality', desc: 'Sourced from certified farms across India' },
-              { icon: '📦', title: 'Fresh & Pure',    desc: 'Packed to preserve maximum aroma and flavour' },
-              { icon: '🚀', title: 'Fast Delivery',   desc: 'Pan-India delivery with careful packaging' },
-              { icon: '🌿', title: 'No Additives',    desc: '100% natural, no artificial colours or preservatives' },
-            ].map(f => (
+            {WHY_KARVII.map(f => (
               <div key={f.title}>
                 <div style={{ fontSize: 40, marginBottom: 12 }}>{f.icon}</div>
-                <div style={{ fontFamily: 'var(--font-head)', fontSize: 17, color: 'var(--brown)', marginBottom: 6 }}>{f.title}</div>
-                <p style={{ fontSize: 13, color: 'var(--text-soft)', lineHeight: 1.7 }}>{f.desc}</p>
+                <div style={{ fontFamily: 'var(--font-head)', fontSize: 17, color: 'var(--color-primary-dark)', marginBottom: 6 }}>{f.title}</div>
+                <p style={{ fontSize: 13, color: 'var(--color-text-soft)', lineHeight: 1.7 }}>{f.desc}</p>
               </div>
             ))}
           </div>
