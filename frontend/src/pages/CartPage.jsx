@@ -37,7 +37,7 @@ export default function CartPage() {
             {cartItems.map(item => (
               <div key={item.product_id} className="cart-item">
                 {item.image_url
-                  ? <img src={`/static/${item.image_url}`} alt={item.name} className="cart-item-img" />
+                  ? <img src={item.image_url.startsWith('http') ? item.image_url : `/static/${item.image_url}`} alt={item.name} className="cart-item-img" />
                   : <div className="cart-item-img" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30 }}>🌶</div>
                 }
                 <div style={{ flex: 1 }}>

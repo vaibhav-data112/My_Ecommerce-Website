@@ -74,7 +74,7 @@ export default function ProductDetailPage() {
           {/* Image */}
           <div>
             {product.image_url
-              ? <img src={`/static/${product.image_url}`} alt={product.name} className="detail-img" />
+              ? <img src={product.image_url.startsWith('http') ? product.image_url : `/static/${product.image_url}`} alt={product.name} className="detail-img" />
               : <div className="detail-placeholder">🌶</div>
             }
           </div>

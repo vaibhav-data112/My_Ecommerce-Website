@@ -423,12 +423,14 @@ def seed_db():
         )
 
         products = [
-            ("Turmeric Powder 100g",           "Pure turmeric powder with high curcumin, great for cooking and health",        89.0,  100, "Ground Spices", None),
-            ("Cumin Seeds (Jeera) 100g",        "Aromatic whole cumin seeds, perfect for tempering curries and rice",          75.0,  150, "Whole Spices",  None),
-            ("Garam Masala 100g",               "Classic blend of 12 slow-roasted whole spices, heart of Indian cooking",     120.0,   80, "Spice Blends",  None),
-            ("Organic Haldi Powder 100g",       "Certified organic turmeric with high curcumin, no additives",                149.0,   60, "Organic",       None),
-            ("Kashmiri Red Chilli Powder 100g", "Deep red colour with mild heat, ideal for tandoori and gravies",              99.0,   90, "Ground Spices", None),
-            ("Black Pepper Whole 50g",          "Premium whole peppercorns, freshly packed for maximum aroma",               110.0,  120, "Whole Spices",  None),
+            ("Cumin Seeds (Jeera) 100g",        "Aromatic whole cumin seeds, perfect for tempering curries and rice",          75.0,  150, "Whole Spices",  "https://images.unsplash.com/photo-1596040033229-a9821ebd058d?w=400&q=80"),
+            ("Turmeric Powder 100g",            "Pure turmeric powder with high curcumin, great for cooking and health",       89.0,  100, "Ground Spices", "https://images.unsplash.com/photo-1615485500704-8e990f9900f7?w=400&q=80"),
+            ("Kashmiri Red Chilli Powder 100g", "Deep red colour with mild heat, ideal for tandoori and gravies",              99.0,   90, "Ground Spices", "https://images.unsplash.com/photo-1583119022894-919a68a3d0e3?w=400&q=80"),
+            ("Garam Masala 100g",               "Classic blend of 12 slow-roasted whole spices, heart of Indian cooking",    120.0,   80, "Spice Blends",  "https://images.unsplash.com/photo-1505253304499-671c55fb57fe?w=400&q=80"),
+            ("Black Pepper Whole 50g",          "Premium whole peppercorns, freshly packed for maximum aroma",               110.0,  120, "Whole Spices",  "https://images.unsplash.com/photo-1599909631372-91db5f6b6e54?w=400&q=80"),
+            ("Coriander Powder 100g",           "Freshly ground dhaniya powder with warm citrusy flavour",                    65.0,  130, "Ground Spices", "https://images.unsplash.com/photo-1568158879083-c42860933ed7?w=400&q=80"),
+            ("Cardamom Whole 50g",              "Premium green elaichi, hand-picked for intense aroma and flavour",          180.0,   70, "Whole Spices",  "https://images.unsplash.com/photo-1612198273689-dbb8e2fe9d72?w=400&q=80"),
+            ("Himalayan Pink Salt 250g",        "Pure Himalayan rock salt, rich in minerals, perfect for everyday cooking",   95.0,  200, "Salt",          "https://images.unsplash.com/photo-1518110925495-5fe2fda0442c?w=400&q=80"),
         ]
         conn.executemany(
             "INSERT INTO products (name, description, price, stock, category, image_url)"

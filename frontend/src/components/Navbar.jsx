@@ -19,8 +19,8 @@ export default function Navbar() {
     <nav className="navbar">
       <div className="container navbar-inner">
         <Link to="/" className="navbar-brand">
-          <div className="brand-icon">🌶</div>
-          Karvii
+          <div className="brand-icon">🌿</div>
+          Karvii Spices
         </Link>
 
         <div className="navbar-links">
@@ -28,16 +28,17 @@ export default function Navbar() {
 
           {user ? (
             <>
-              <Link to="/wishlist" className="navbar-link">Wishlist</Link>
-              <Link to="/orders" className="navbar-link">Orders</Link>
+              <Link to="/wishlist" className="navbar-link">♡ Wishlist</Link>
+              <Link to="/orders"   className="navbar-link">Orders</Link>
               {user.is_admin && <Link to="/admin" className="navbar-link">Admin</Link>}
               <Link to="/cart" className="cart-btn">
-                🛒
+                🛒 Cart
                 {cartCount > 0 && <span className="cart-badge">{cartCount}</span>}
               </Link>
               <div className="user-menu">
                 <button className="user-btn" onClick={() => setOpen(v => !v)}>
-                  👤 {user.name.split(' ')[0]}
+                  <span className="avatar-circle">{user.name.charAt(0).toUpperCase()}</span>
+                  {user.name.split(' ')[0]}
                 </button>
                 {open && (
                   <div className="user-dropdown">
@@ -52,7 +53,7 @@ export default function Navbar() {
           ) : (
             <>
               <Link to="/login"  className="navbar-link">Login</Link>
-              <Link to="/signup" className="btn btn-primary btn-sm">Sign Up</Link>
+              <Link to="/signup" className="btn btn-cart btn-sm">Sign Up</Link>
             </>
           )}
         </div>
