@@ -49,7 +49,7 @@ export default function WishlistPage() {
               <div key={item.id} className="product-card">
                 <Link to={`/products/${item.id}`}>
                   {item.image_url
-                    ? <img src={`/static/${item.image_url}`} alt={item.name} className="product-card-img" />
+                    ? <img src={item.image_url.startsWith('http') ? item.image_url : `/static/${item.image_url}`} alt={item.name} className="product-card-img" />
                     : <div className="product-card-placeholder">🌶</div>
                   }
                   <div className="product-card-body">

@@ -36,7 +36,11 @@ export default function ProductCard({ product, wishlistIds = new Set(), onWishli
       </button>
 
       {product.image_url
-        ? <img src={`/static/${product.image_url}`} alt={product.name} className="product-card-img" />
+        ? <img
+            src={product.image_url.startsWith('http') ? product.image_url : `/static/${product.image_url}`}
+            alt={product.name}
+            className="product-card-img"
+          />
         : <div className="product-card-placeholder">{SPICE_EMOJI[product.category] || '🌶'}</div>
       }
 

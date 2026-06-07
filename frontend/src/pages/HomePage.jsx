@@ -100,7 +100,7 @@ export default function HomePage() {
           <h2 className="section-title">Featured Products</h2>
           <p className="section-subtitle">Our most loved spices, handpicked for you</p>
           {loading ? <Spinner /> : (
-            <div className="products-grid">
+            <div className="featured-grid">
               {products.map(p => <ProductCard key={p.id} product={p} />)}
             </div>
           )}
