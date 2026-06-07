@@ -45,17 +45,30 @@ export default function HomePage() {
       {/* Hero */}
       <section className="hero">
         <div className="container">
-          <div className="hero-eyebrow">Premium Indian Spices</div>
-          <h1 className="hero-title">
-            Pure Spices,<br /><span>Authentic Flavours</span>
-          </h1>
-          <p className="hero-subtitle">
-            Carefully sourced from the finest farms across India. From smoky whole peppercorns
-            to vibrant Kashmiri chilli — bring real flavour to your kitchen.
-          </p>
-          <div className="hero-btns">
-            <Link to="/products" className="btn btn-primary btn-lg">Shop Now</Link>
-            <Link to="/products?category=Organic" className="btn btn-lg btn-hero-outline">Organic Range</Link>
+          <div className="hero-grid">
+            {/* Left — text */}
+            <div>
+              <div className="hero-eyebrow">Premium Indian Spices</div>
+              <h1 className="hero-title">
+                Pure Spices,<br /><span>Authentic Flavours</span>
+              </h1>
+              <p className="hero-subtitle">
+                Carefully sourced from the finest farms across India. From smoky whole peppercorns
+                to vibrant Kashmiri chilli — bring real flavour to your kitchen.
+              </p>
+              <div className="hero-btns">
+                <Link to="/products" className="btn btn-primary btn-lg">Shop Now</Link>
+                <Link to="/products?category=Organic" className="btn btn-lg btn-hero-outline">Organic Range</Link>
+              </div>
+            </div>
+            {/* Right — image */}
+            <div>
+              <img
+                src="https://images.unsplash.com/photo-1596040033229-a9821ebd058d?w=600&q=80"
+                alt="Colorful Indian spices"
+                className="hero-img"
+              />
+            </div>
           </div>
         </div>
       </section>
@@ -92,7 +105,7 @@ export default function HomePage() {
             </div>
           )}
           <div style={{ textAlign: 'center', marginTop: 32 }}>
-            <Link to="/products" className="btn btn-outline btn-lg">View All Products</Link>
+            <Link to="/products" className="btn btn-primary btn-lg">View All Products</Link>
           </div>
         </div>
       </section>

@@ -27,8 +27,12 @@ export default function ProductCard({ product, wishlistIds = new Set(), onWishli
   return (
     <Link to={`/products/${product.id}`} className="product-card" style={{ display: 'block' }}>
       {product.stock === 0 && <span className="oos-badge">Out of Stock</span>}
-      <button className="wishlist-btn" onClick={handleWishlist} title={inWishlist ? 'Remove from wishlist' : 'Add to wishlist'}>
-        {inWishlist ? '❤️' : '🤍'}
+      <button
+        className={`wishlist-btn${inWishlist ? ' wishlist-btn--filled' : ''}`}
+        onClick={handleWishlist}
+        title={inWishlist ? 'Remove from wishlist' : 'Add to wishlist'}
+      >
+        ♥
       </button>
 
       {product.image_url
