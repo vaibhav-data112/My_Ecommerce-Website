@@ -1,8 +1,6 @@
 import os
 
-from flask import (
-    Blueprint, abort, flash, redirect, render_template, request, url_for
-)
+from flask import Blueprint, abort, jsonify, request
 from flask_login import current_user, login_required
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
@@ -15,90 +13,95 @@ from db import (
 )
 from orders import get_user_orders
 
-account = Blueprint('account', __name__, url_prefix='/account')
+account = Blueprint('account', __name__, url_prefix='/api/account')
 
 AVATAR_UPLOAD_DIR = os.path.join('static', 'uploads', 'avatars')
-ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png', 'webp'}
-MAX_AVATAR_SIZE = 5 * 1024 * 1024  # 5 MB
+ALLOWED_EXT       = {'jpg', 'jpeg', 'png', 'webp'}
+MAX_AVATAR_SIZE   = 5 * 1024 * 1024
 
 
 def _allowed_avatar(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXT
 
 
 # ---------------------------------------------------------------------------
 # Dashboard
 # ---------------------------------------------------------------------------
 
-@account.route('/')
+@account.route('/', strict_slashes=False)
 @login_required
 def dashboard():
-    uid = int(current_user.id)
-    user = get_user_by_id(uid)
-    orders = get_user_orders(uid)
+    uid    = int(current_user.id)
+    user   = get_user_by_id(uid)
+    ords   = get_user_orders(uid)
     wcount = get_wishlist_count(uid)
-    return render_template(
-        'account/dashboard.html',
-        active='dashboard',
-        user=user,
-        order_count=len(orders),
-        wishlist_count_acct=wcount,
-    )
+    u      = dict(user)
+    u.pop('password_hash', None)
+    return jsonify({
+        'user':           u,
+        'order_count':    len(ords),
+        'wishlist_count': wcount,
+    })
 
 
 # ---------------------------------------------------------------------------
-# Profile edit
+# Profile
 # ---------------------------------------------------------------------------
 
-@account.route('/profile', methods=['GET', 'POST'])
+@account.route('/profile')
 @login_required
 def profile():
-    uid = int(current_user.id)
+    uid  = int(current_user.id)
     user = get_user_by_id(uid)
+    u    = dict(user)
+    u.pop('password_hash', None)
+    return jsonify({'user': u})
 
-    if request.method == 'POST':
-        name = request.form.get('name', '').strip()
-        phone = request.form.get('phone', '').strip()
 
-        if not name:
-            flash('Name cannot be empty.', 'error')
-            return render_template('account/profile.html', active='dashboard', user=user)
+@account.route('/profile', methods=['POST'])
+@login_required
+def update_profile_route():
+    uid  = int(current_user.id)
+    user = get_user_by_id(uid)
+    name  = request.form.get('name', '').strip()
+    phone = request.form.get('phone', '').strip()
 
-        avatar_path = None
-        file = request.files.get('avatar')
-        if file and file.filename:
-            if not _allowed_avatar(file.filename):
-                flash('Only JPG, PNG, or WEBP files are allowed.', 'error')
-                return render_template('account/profile.html', active='dashboard', user=user)
-            file.seek(0, 2)
-            size = file.tell()
-            file.seek(0)
-            if size > MAX_AVATAR_SIZE:
-                flash('Photo must be under 5 MB.', 'error')
-                return render_template('account/profile.html', active='dashboard', user=user)
-            filename = f"{uid}_{secure_filename(file.filename)}"
-            file.save(os.path.join(AVATAR_UPLOAD_DIR, filename))
-            avatar_path = f"uploads/avatars/{filename}"
+    if not name:
+        return jsonify({'error': 'Name cannot be empty.'}), 400
 
-        update_profile(uid, name, phone, avatar_path)
-        flash('Profile updated successfully!', 'success')
-        return redirect(url_for('account.profile'))
+    avatar_path = None
+    file = request.files.get('avatar')
+    if file and file.filename:
+        if not _allowed_avatar(file.filename):
+            return jsonify({'error': 'Only JPG, PNG, or WEBP files are allowed.'}), 400
+        file.seek(0, 2)
+        size = file.tell()
+        file.seek(0)
+        if size > MAX_AVATAR_SIZE:
+            return jsonify({'error': 'Photo must be under 5 MB.'}), 400
+        os.makedirs(AVATAR_UPLOAD_DIR, exist_ok=True)
+        filename    = f"{uid}_{secure_filename(file.filename)}"
+        file.save(os.path.join(AVATAR_UPLOAD_DIR, filename))
+        avatar_path = f"uploads/avatars/{filename}"
 
-    return render_template('account/profile.html', active='dashboard', user=user)
+    update_profile(uid, name, phone, avatar_path)
+    updated = get_user_by_id(uid)
+    u       = dict(updated)
+    u.pop('password_hash', None)
+    return jsonify({'success': True, 'message': 'Profile updated successfully!', 'user': u})
 
 
 @account.route('/profile/delete-avatar', methods=['POST'])
 @login_required
 def delete_avatar():
-    uid = int(current_user.id)
+    uid  = int(current_user.id)
     user = get_user_by_id(uid)
     if user and user['avatar']:
         disk_path = os.path.join('static', user['avatar'])
         if os.path.exists(disk_path):
             os.remove(disk_path)
     clear_avatar(uid)
-    flash('Profile photo removed.', 'success')
-    return redirect(url_for('account.profile'))
+    return jsonify({'success': True, 'message': 'Profile photo removed.'})
 
 
 # ---------------------------------------------------------------------------
@@ -108,121 +111,123 @@ def delete_avatar():
 @account.route('/addresses')
 @login_required
 def addresses():
-    uid = int(current_user.id)
+    uid   = int(current_user.id)
     addrs = get_addresses(uid)
-    return render_template('account/addresses.html', active='addresses', addresses=addrs)
+    return jsonify({'addresses': [dict(a) for a in addrs]})
 
 
 @account.route('/addresses/new', methods=['POST'])
 @login_required
 def add_address_route():
-    uid = int(current_user.id)
-    full_name    = request.form.get('full_name', '').strip()
-    phone        = request.form.get('phone', '').strip()
-    address_line = request.form.get('address_line', '').strip()
-    city         = request.form.get('city', '').strip()
-    state        = request.form.get('state', '').strip()
-    pincode      = request.form.get('pincode', '').strip()
+    uid  = int(current_user.id)
+    data = request.get_json(silent=True) or {}
+
+    full_name    = data.get('full_name', '').strip()
+    phone        = data.get('phone', '').strip()
+    address_line = data.get('address_line', '').strip()
+    city         = data.get('city', '').strip()
+    state        = data.get('state', '').strip()
+    pincode      = data.get('pincode', '').strip()
 
     if not all([full_name, phone, address_line, city, state, pincode]):
-        flash('All address fields are required.', 'error')
-        return redirect(url_for('account.addresses'))
+        return jsonify({'error': 'All address fields are required.'}), 400
 
     add_address(uid, full_name, phone, address_line, city, state, pincode)
-    flash('Address added successfully!', 'success')
-    return redirect(url_for('account.addresses'))
+    addrs = get_addresses(uid)
+    return jsonify({'success': True, 'addresses': [dict(a) for a in addrs]}), 201
 
 
-@account.route('/addresses/<int:addr_id>/edit', methods=['GET', 'POST'])
+@account.route('/addresses/<int:addr_id>', methods=['PUT'])
 @login_required
 def edit_address(addr_id):
-    uid = int(current_user.id)
+    uid  = int(current_user.id)
     addr = get_address_by_id(addr_id)
     if not addr or int(addr['user_id']) != uid:
-        abort(403)
+        return jsonify({'error': 'Forbidden'}), 403
 
-    if request.method == 'POST':
-        full_name    = request.form.get('full_name', '').strip()
-        phone        = request.form.get('phone', '').strip()
-        address_line = request.form.get('address_line', '').strip()
-        city         = request.form.get('city', '').strip()
-        state        = request.form.get('state', '').strip()
-        pincode      = request.form.get('pincode', '').strip()
+    data         = request.get_json(silent=True) or {}
+    full_name    = data.get('full_name', '').strip()
+    phone        = data.get('phone', '').strip()
+    address_line = data.get('address_line', '').strip()
+    city         = data.get('city', '').strip()
+    state        = data.get('state', '').strip()
+    pincode      = data.get('pincode', '').strip()
 
-        if not all([full_name, phone, address_line, city, state, pincode]):
-            flash('All address fields are required.', 'error')
-            return render_template('account/edit_address.html', active='addresses', addr=addr)
+    if not all([full_name, phone, address_line, city, state, pincode]):
+        return jsonify({'error': 'All address fields are required.'}), 400
 
-        update_address(addr_id, full_name, phone, address_line, city, state, pincode)
-        flash('Address updated successfully!', 'success')
-        return redirect(url_for('account.addresses'))
-
-    return render_template('account/edit_address.html', active='addresses', addr=addr)
+    update_address(addr_id, full_name, phone, address_line, city, state, pincode)
+    return jsonify({'success': True, 'message': 'Address updated successfully!'})
 
 
 @account.route('/addresses/<int:addr_id>/delete', methods=['POST'])
 @login_required
 def delete_address_route(addr_id):
-    uid = int(current_user.id)
+    uid  = int(current_user.id)
     addr = get_address_by_id(addr_id)
     if not addr or int(addr['user_id']) != uid:
-        abort(403)
+        return jsonify({'error': 'Forbidden'}), 403
     delete_address(uid, addr_id)
-    flash('Address removed.', 'success')
-    return redirect(url_for('account.addresses'))
+    return jsonify({'success': True, 'message': 'Address removed.'})
 
 
 @account.route('/addresses/<int:addr_id>/default', methods=['POST'])
 @login_required
 def set_default_route(addr_id):
-    uid = int(current_user.id)
+    uid  = int(current_user.id)
     addr = get_address_by_id(addr_id)
     if not addr or int(addr['user_id']) != uid:
-        abort(403)
+        return jsonify({'error': 'Forbidden'}), 403
     set_default_address(uid, addr_id)
-    flash('Default address updated.', 'success')
-    return redirect(url_for('account.addresses'))
+    return jsonify({'success': True, 'message': 'Default address updated.'})
 
 
 # ---------------------------------------------------------------------------
-# Settings (password + notifications)
+# Settings
 # ---------------------------------------------------------------------------
 
-@account.route('/settings', methods=['GET', 'POST'])
+@account.route('/settings', methods=['GET'])
 @login_required
 def settings():
-    uid = int(current_user.id)
-    user = get_user_by_id(uid)
+    uid            = int(current_user.id)
+    user           = get_user_by_id(uid)
+    is_google_only = not user['password_hash']
+    u              = dict(user)
+    u.pop('password_hash', None)
+    return jsonify({'user': u, 'is_google_only': is_google_only})
+
+
+@account.route('/settings/password', methods=['POST'])
+@login_required
+def change_password_route():
+    uid            = int(current_user.id)
+    user           = get_user_by_id(uid)
     is_google_only = not user['password_hash']
 
-    if request.method == 'POST':
-        action = request.form.get('action')
+    if is_google_only:
+        return jsonify({'error': 'Password change not available for Google accounts.'}), 400
 
-        if action == 'password' and not is_google_only:
-            current_pw  = request.form.get('current_password', '')
-            new_pw      = request.form.get('new_password', '')
-            confirm_pw  = request.form.get('confirm_password', '')
+    data       = request.get_json(silent=True) or {}
+    current_pw = data.get('current_password', '')
+    new_pw     = data.get('new_password', '')
+    confirm_pw = data.get('confirm_password', '')
 
-            if not check_password_hash(user['password_hash'], current_pw):
-                flash('Current password is incorrect.', 'error')
-            elif len(new_pw) < 8:
-                flash('New password must be at least 8 characters.', 'error')
-            elif new_pw != confirm_pw:
-                flash('New passwords do not match.', 'error')
-            else:
-                change_password(uid, generate_password_hash(new_pw))
-                flash('Password changed successfully!', 'success')
+    if not check_password_hash(user['password_hash'], current_pw):
+        return jsonify({'error': 'Current password is incorrect.'}), 400
+    if len(new_pw) < 8:
+        return jsonify({'error': 'New password must be at least 8 characters.'}), 400
+    if new_pw != confirm_pw:
+        return jsonify({'error': 'New passwords do not match.'}), 400
 
-        elif action == 'notifications':
-            notify = bool(request.form.get('notify_email'))
-            update_notify_pref(uid, notify)
-            flash('Notification preferences saved.', 'success')
+    change_password(uid, generate_password_hash(new_pw))
+    return jsonify({'success': True, 'message': 'Password changed successfully!'})
 
-        return redirect(url_for('account.settings'))
 
-    return render_template(
-        'account/settings.html',
-        active='settings',
-        user=user,
-        is_google_only=is_google_only,
-    )
+@account.route('/settings/notifications', methods=['POST'])
+@login_required
+def update_notifications():
+    uid    = int(current_user.id)
+    data   = request.get_json(silent=True) or {}
+    notify = bool(data.get('notify_email', True))
+    update_notify_pref(uid, notify)
+    return jsonify({'success': True, 'message': 'Notification preferences saved.'})
