@@ -1,126 +1,138 @@
 ---
 name: ecommerce-ui-design
-description: The single source of truth for how this Flask e-commerce site looks. Use this skill WHENEVER creating or editing ANY HTML template, CSS, or page in this project — product pages, forms, navbar, footer, admin pages, auth pages, cart, checkout, everything. Always apply these design tokens so every page looks consistent and feels like a premium boutique fashion brand (deep plum + champagne gold + warm cream), instead of looking like an unstyled prototype. Trigger this even when the user just says "make this page look better", "style this", "fix the design", or adds any new feature with a UI.
+description: The single source of truth for how the Karvii Spices React frontend looks. Use this skill WHENEVER creating or editing ANY React component, page, CSS, or UI in the frontend/ folder. Apply these design tokens so every page feels like a premium, fresh, natural Indian spice brand — think earthy greens, warm whites, terracotta accents — NOT bland beige, NOT dark fashion. Trigger this even when the user says "make it look better", "style this", "fix the design", "add a new page/component", or anything UI-related in the React frontend.
 ---
 
-# E-Commerce UI Design System (Premium Boutique — Plum / Gold / Cream)
+# Karvii Spices — React UI Design System
 
-This project is a Flask + Jinja + **plain CSS** e-commerce site (no React, no Tailwind, no Bootstrap). The brand is an **elegant, premium fashion/boutique** brand (rose-gold "K" logo). Every page MUST follow the tokens and patterns below so the whole site feels like one polished, refined, high-end shopping website — NOT a bright mass-market marketplace.
+## Brand personality in one line
+**Fresh, natural, earthy, trustworthy** — like a premium Indian spice shop that sources directly from farms. Think real herbs, terracotta pots, morning sunlight. NOT a fashion store. NOT a dark luxury brand. NOT a bland beige food delivery app.
 
-## Aesthetic in one line
-Warm cream backgrounds, deep plum structure, champagne-gold accents, elegant serif headings, generous whitespace, soft shadows. Think luxury boutique, not flea market.
-
-## Golden rules
-
-1. **Always use the CSS variables** defined below — never hardcode random colors or sizes.
-2. **One global stylesheet**: put all shared styles in `static/css/style.css` and link it in `base.html`. Don't scatter `<style>` blocks across pages.
-3. **Consistency beats cleverness** — a new page should reuse existing classes (`.btn`, `.product-card`, etc.), not invent new ones.
-4. **Gold is an accent, not a flood** — use champagne gold for CTAs, borders, highlights. Don't paint whole sections gold.
-5. **Mobile-friendly**: layouts must not break on a phone-width screen. Use the responsive grid pattern below.
-6. When unsure, copy the look of an existing well-styled page rather than guessing.
+## Stack
+React + Vite + plain CSS (no Tailwind, no Bootstrap). All styles in `frontend/src/index.css` (global tokens + components) and scoped component CSS files. Import Google Fonts in `index.html`.
 
 ---
 
-## 1. Design tokens (paste into the top of `static/css/style.css`)
+## 1. Design Tokens — paste into `frontend/src/index.css`
 
 ```css
+/* =============================================
+   KARVII SPICES — Design Tokens
+   ============================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600&display=swap');
+
 :root {
-  /* Brand palette */
-  --color-plum:        #3D1A2B;   /* deep plum — navbar, footer, headings, structure */
-  --color-plum-dark:   #2C1220;   /* darker plum — hover on plum buttons */
-  --color-gold:        #E8C39E;   /* champagne gold — accents, CTAs, borders */
-  --color-gold-dark:   #D4A877;   /* gold hover */
-  --color-cream:       #F7EDE2;   /* warm cream — page background */
-  --color-surface:     #FFFFFF;   /* cards, panels (slightly brighter than cream) */
-  --color-text:        #2C2C2A;   /* main dark text */
-  --color-text-soft:   #8a8378;   /* secondary text, captions */
-  --color-border:      #e6dccb;   /* soft warm borders/dividers */
+  /* === Brand Colors === */
+  --color-primary:      #2D6A4F;   /* deep forest green — navbar, headings, CTAs */
+  --color-primary-dark: #1B4332;   /* hover on green buttons */
+  --color-primary-light:#40916C;   /* secondary green — tags, badges */
+  --color-accent:       #D4580A;   /* terracotta/spice orange — "Add to Cart", highlights */
+  --color-accent-dark:  #B84A06;   /* hover on orange */
+  --color-accent-soft:  #FDEBD0;   /* very light orange — tag backgrounds */
+  --color-gold:         #B7860B;   /* turmeric gold — star ratings, premium label */
 
-  /* Status colors (kept earthy to match palette) */
-  --color-success:     #5a7d52;   /* in-stock / success (muted sage green) */
-  --color-danger:      #b3443b;   /* errors / out-of-stock (muted brick red) */
-  --color-star:        #c9952f;   /* rating stars (deep gold) */
+  /* === Neutrals === */
+  --color-bg:           #FAFAF7;   /* off-white — page background (NOT pure white, NOT beige) */
+  --color-surface:      #FFFFFF;   /* cards, panels */
+  --color-surface-warm: #F4F1EB;   /* warm light — hero, section backgrounds */
+  --color-text:         #1C1C1A;   /* main text (almost black, warm) */
+  --color-text-soft:    #6B6B5E;   /* secondary text, captions */
+  --color-border:       #E2DDD5;   /* card borders, dividers */
+  --color-border-green: #B7D5C4;   /* green-tinted borders for tags/badges */
 
-  /* Typography */
-  --font-head: 'Playfair Display', Georgia, 'Times New Roman', serif;  /* elegant headings */
-  --font-body: 'Poppins', 'Segoe UI', Roboto, Arial, sans-serif;       /* clean body */
-  --fs-xs: 12px;
-  --fs-sm: 14px;
+  /* === Status === */
+  --color-success:      #2D6A4F;   /* same as primary — in-stock (consistent) */
+  --color-danger:       #C0392B;   /* out of stock, errors */
+  --color-star:         #B7860B;   /* rating stars (turmeric gold) */
+
+  /* === Typography === */
+  --font-head: 'Playfair Display', Georgia, serif;   /* headings — elegant, premium */
+  --font-body: 'Inter', system-ui, sans-serif;        /* body — clean, readable */
+  --fs-xs:   12px;
+  --fs-sm:   14px;
   --fs-base: 16px;
-  --fs-lg: 20px;
-  --fs-xl: 30px;
-  --fs-hero: 44px;
+  --fs-lg:   20px;
+  --fs-xl:   28px;
+  --fs-hero: 48px;
 
-  /* Spacing scale (use these, not random px) */
+  /* === Spacing === */
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 16px;
   --space-4: 24px;
   --space-5: 40px;
+  --space-6: 64px;
 
-  /* Shape & shadow (soft, premium) */
-  --radius: 6px;
-  --radius-lg: 12px;
-  --shadow-sm: 0 2px 8px rgba(61,26,43,0.08);
-  --shadow-md: 0 6px 20px rgba(61,26,43,0.12);
+  /* === Shape & Shadow === */
+  --radius:    8px;
+  --radius-lg: 16px;
+  --radius-pill: 100px;
+  --shadow-sm: 0 1px 4px rgba(44, 62, 40, 0.08);
+  --shadow-md: 0 4px 16px rgba(44, 62, 40, 0.12);
+  --shadow-lg: 0 8px 32px rgba(44, 62, 40, 0.15);
 }
 
-* { box-sizing: border-box; }
+/* === Reset + Base === */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 body {
-  margin: 0;
   font-family: var(--font-body);
   font-size: var(--fs-base);
   color: var(--color-text);
-  background: var(--color-cream);
-  line-height: 1.55;
+  background: var(--color-bg);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
 }
-h1, h2, h3 { font-family: var(--font-head); color: var(--color-plum); font-weight: 700; letter-spacing: 0.3px; }
-h1 { font-size: var(--fs-xl); margin: var(--space-4) 0 var(--space-3); }
-a { color: var(--color-plum); text-decoration: none; }
-a:hover { color: var(--color-gold-dark); }
-.container { max-width: 1200px; margin: 0 auto; padding: 0 var(--space-3); }
-```
-
-### Fonts: add to `base.html` `<head>` (before style.css)
-```html
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+h1, h2, h3, h4 {
+  font-family: var(--font-head);
+  color: var(--color-text);
+  line-height: 1.2;
+}
+a { color: var(--color-primary); text-decoration: none; }
+a:hover { color: var(--color-primary-dark); }
+img { max-width: 100%; display: block; }
+.container { max-width: 1200px; margin: 0 auto; padding: 0 var(--space-4); }
 ```
 
 ---
 
-## 2. Logo & Navbar (deep plum bar)
+## 2. Navbar
 
-- Background `--color-plum`, cream/gold text, `--shadow-sm`. Sticky to top.
-- Left: the rose-gold logo image + brand name (serif, gold). Center: search bar. Right: Account, Cart (gold count badge), My Orders, Admin (admin only).
-- **Logo tip**: the logo has a black background — for the plum navbar, use a **transparent-background PNG** of the logo so it blends (or keep it inside a small dark circle). Store it at `static/img/logo.png`.
+- Background: `--color-primary` (deep green), white text/links.
+- Left: logo (leaf icon or brand mark) + "Karvii Spices" in Inter 600 white.
+- Center/Right: Shop, Wishlist ♡, Orders, Cart (with count badge), Account avatar.
+- Cart badge: `--color-accent` (terracotta), white text.
+- Height: ~64px. Sticky. `--shadow-sm`.
+- Mobile: hamburger menu.
 
 ```css
 .navbar {
-  background: var(--color-plum);
-  color: var(--color-cream);
-  padding: var(--space-3) 0;
-  box-shadow: var(--shadow-sm);
+  background: var(--color-primary);
+  padding: 0 var(--space-4);
+  height: 64px;
+  display: flex; align-items: center;
   position: sticky; top: 0; z-index: 100;
+  box-shadow: var(--shadow-sm);
 }
-.navbar .container { display: flex; align-items: center; gap: var(--space-4); }
-.navbar .brand { display: flex; align-items: center; gap: var(--space-2); }
-.navbar .brand img { height: 38px; width: auto; }
-.navbar .brand span { font-family: var(--font-head); font-size: var(--fs-lg); color: var(--color-gold); font-weight: 700; }
-.navbar .search { flex: 1; }
-.navbar .search input {
-  width: 100%; padding: 11px var(--space-3);
-  border: 1px solid var(--color-gold); border-radius: var(--radius);
-  font-size: var(--fs-sm); background: #fff;
+.navbar-brand {
+  font-family: var(--font-body);
+  font-weight: 700; font-size: var(--fs-lg);
+  color: #fff; display: flex; align-items: center; gap: var(--space-2);
 }
-.navbar .nav-links { display: flex; align-items: center; gap: var(--space-4); }
-.navbar .nav-links a { color: var(--color-cream); font-weight: 500; }
-.navbar .nav-links a:hover { color: var(--color-gold); }
+.navbar-links { display: flex; align-items: center; gap: var(--space-4); margin-left: auto; }
+.navbar-links a { color: rgba(255,255,255,0.88); font-size: var(--fs-sm); font-weight: 500; }
+.navbar-links a:hover { color: #fff; }
 .cart-badge {
-  background: var(--color-gold); color: var(--color-plum); font-size: var(--fs-xs);
-  font-weight: 600; border-radius: 50%; padding: 2px 7px; margin-left: 4px;
+  background: var(--color-accent); color: #fff;
+  font-size: 10px; font-weight: 700;
+  border-radius: 50%; padding: 2px 6px; margin-left: 2px;
+}
+.avatar-circle {
+  width: 34px; height: 34px; border-radius: 50%;
+  background: var(--color-primary-light); color: #fff;
+  font-weight: 700; font-size: var(--fs-sm);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
 }
 ```
 
@@ -128,162 +140,276 @@ a:hover { color: var(--color-gold-dark); }
 
 ## 3. Buttons
 
-| Class | Use for | Look |
-|-------|---------|------|
-| `.btn` | base (always include) | — |
-| `.btn-primary` | normal actions (Save, Login, Submit) | plum bg, cream text |
-| `.btn-cart` | "Add to Cart" | gold bg, plum text |
-| `.btn-buy` | "Buy Now" / Checkout | plum bg, gold border (strong) |
-| `.btn-outline` | secondary (Cancel, Back) | transparent, plum border |
+| Class | Use | Look |
+|-------|-----|------|
+| `.btn` | base (always add) | — |
+| `.btn-primary` | main CTAs (Shop Now, Login, Save) | green bg, white text |
+| `.btn-cart` | "Add to Cart" | terracotta `--color-accent`, white |
+| `.btn-buy` | "Buy Now" | dark green, white |
+| `.btn-outline` | secondary (Cancel, Back) | white bg, green border |
+| `.btn-outline-accent` | secondary orange option | white bg, orange border |
 
 ```css
 .btn {
-  display: inline-block; border: none; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: var(--space-1); border: none; cursor: pointer;
   padding: 11px var(--space-4); border-radius: var(--radius);
-  font-size: var(--fs-sm); font-weight: 600; letter-spacing: 0.3px;
-  transition: all 0.18s ease;
+  font-family: var(--font-body); font-size: var(--fs-sm);
+  font-weight: 600; transition: all 0.18s ease;
+  white-space: nowrap;
 }
-.btn-primary { background: var(--color-plum); color: var(--color-cream); }
-.btn-primary:hover { background: var(--color-plum-dark); color: #fff; }
-.btn-cart { background: var(--color-gold); color: var(--color-plum); }
-.btn-cart:hover { background: var(--color-gold-dark); }
-.btn-buy { background: var(--color-plum); color: var(--color-gold); border: 1px solid var(--color-gold); }
-.btn-buy:hover { background: var(--color-plum-dark); }
-.btn-outline { background: transparent; color: var(--color-plum); border: 1px solid var(--color-plum); }
-.btn-outline:hover { background: var(--color-plum); color: var(--color-cream); }
+.btn-primary { background: var(--color-primary); color: #fff; }
+.btn-primary:hover { background: var(--color-primary-dark); }
+.btn-cart { background: var(--color-accent); color: #fff; }
+.btn-cart:hover { background: var(--color-accent-dark); }
+.btn-buy { background: var(--color-primary-dark); color: #fff; }
+.btn-outline { background: #fff; color: var(--color-primary); border: 1.5px solid var(--color-primary); }
+.btn-outline:hover { background: var(--color-primary); color: #fff; }
+.btn-outline-accent { background: #fff; color: var(--color-accent); border: 1.5px solid var(--color-accent); }
+.btn-sm { padding: 7px var(--space-3); font-size: var(--fs-xs); }
+.btn-lg { padding: 14px var(--space-5); font-size: var(--fs-base); }
 ```
 
 ---
 
-## 4. Product card & grid
+## 4. Product Card (the heart of the catalog)
 
-- Cream/white card, soft warm border, gentle hover lift. Refined, airy.
-- Image area fixed height, `object-fit: contain`. Title (serif-ish optional), price in plum bold, gold rating badge, stock status.
+- White card, warm border, hover: lift + green border glow.
+- Image: white/warm bg, `object-fit: contain` (masala packets must never stretch).
+- Category tag: small green pill. Price: bold terracotta. Rating: gold stars.
+- "Add to Cart" button full width at bottom.
+- Weight selector (if variants exist): small pill buttons below price.
 
 ```css
 .product-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: var(--space-4);
-  padding: var(--space-4) 0;
 }
 .product-card {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
+  overflow: hidden;
+  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+  display: flex; flex-direction: column;
+}
+.product-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--color-border-green);
+}
+.product-card-img {
+  width: 100%; height: 180px;
+  object-fit: contain; background: var(--color-surface-warm);
   padding: var(--space-3);
-  transition: transform 0.2s, box-shadow 0.2s;
 }
-.product-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-md); }
-.product-card img {
-  width: 100%; height: 200px; object-fit: contain;
-  background: #fff; margin-bottom: var(--space-2); border-radius: var(--radius);
+.product-card-body { padding: var(--space-3); flex: 1; display: flex; flex-direction: column; }
+.product-category-tag {
+  display: inline-block;
+  background: var(--color-accent-soft); color: var(--color-accent);
+  font-size: var(--fs-xs); font-weight: 600;
+  padding: 2px 10px; border-radius: var(--radius-pill);
+  text-transform: uppercase; letter-spacing: 0.4px;
+  margin-bottom: var(--space-2);
 }
-.product-card .title {
-  font-size: var(--fs-sm); color: var(--color-text); font-weight: 500;
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
-  overflow: hidden; min-height: 40px;
+.product-title { font-size: var(--fs-sm); font-weight: 500; color: var(--color-text); flex: 1; }
+.product-price {
+  font-size: var(--fs-lg); font-weight: 700;
+  color: var(--color-primary-dark); margin: var(--space-2) 0;
 }
-.product-card .price {
-  font-family: var(--font-head); font-size: var(--fs-lg);
-  font-weight: 700; color: var(--color-plum); margin: var(--space-1) 0;
-}
-.rating-badge {
-  display: inline-block; background: var(--color-star); color: #fff;
-  font-size: var(--fs-xs); padding: 2px 7px; border-radius: var(--radius);
-}
+.rating-row { display: flex; align-items: center; gap: var(--space-1); margin-bottom: var(--space-2); }
+.star { color: var(--color-star); font-size: var(--fs-sm); }
+.rating-count { font-size: var(--fs-xs); color: var(--color-text-soft); }
 .in-stock { color: var(--color-success); font-size: var(--fs-xs); font-weight: 500; }
 .out-stock { color: var(--color-danger); font-size: var(--fs-xs); font-weight: 500; }
+
+/* Weight variant pills */
+.weight-pills { display: flex; gap: var(--space-1); flex-wrap: wrap; margin-bottom: var(--space-2); }
+.weight-pill {
+  padding: 3px 10px; border-radius: var(--radius-pill);
+  border: 1px solid var(--color-border);
+  font-size: var(--fs-xs); cursor: pointer; background: #fff;
+  transition: all 0.15s;
+}
+.weight-pill.active, .weight-pill:hover {
+  background: var(--color-primary); color: #fff; border-color: var(--color-primary);
+}
 ```
 
 ---
 
-## 5. Forms (login, signup, checkout, admin add/edit)
+## 5. Category Cards (homepage grid)
+
+- White card, centered icon (emoji or illustration, ~48px), name, short description.
+- Hover: green border + light green background tint.
 
 ```css
-.card {
-  background: var(--color-surface); border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg); padding: var(--space-4); box-shadow: var(--shadow-sm);
+.category-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: var(--space-3);
 }
-.form-card { max-width: 440px; margin: var(--space-5) auto; }
+.category-card {
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4) var(--space-3);
+  text-align: center; cursor: pointer;
+  transition: all 0.18s;
+}
+.category-card:hover {
+  border-color: var(--color-primary-light);
+  background: #F0F7F3;
+}
+.category-icon { font-size: 40px; margin-bottom: var(--space-2); }
+.category-name { font-weight: 600; font-size: var(--fs-sm); color: var(--color-text); }
+.category-desc { font-size: var(--fs-xs); color: var(--color-text-soft); margin-top: 4px; }
+```
+
+---
+
+## 6. Offer/Promo Banner
+
+Horizontal scrolling banner at top of page: green bg, white text, marquee-style.
+
+```css
+.offer-banner {
+  background: var(--color-primary);
+  color: #fff; text-align: center;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--fs-xs); font-weight: 500;
+  letter-spacing: 0.3px;
+}
+.offer-banner span { margin: 0 var(--space-4); opacity: 0.9; }
+```
+
+---
+
+## 7. Hero Section
+
+- Background: `--color-surface-warm` OR a high-quality masala/farm image.
+- Left: headline (Playfair, `--fs-hero`), subtext, 2 CTA buttons (primary + outline).
+- Right: hero product image (masala pack, spice bowl, farm).
+- NO pure brown background (that's what's there now — too dull). Go light + fresh.
+
+```css
+.hero {
+  background: var(--color-surface-warm);
+  min-height: 520px;
+  display: flex; align-items: center;
+}
+.hero-content { max-width: 560px; }
+.hero-eyebrow {
+  font-size: var(--fs-xs); font-weight: 700;
+  color: var(--color-primary-light); letter-spacing: 1.5px;
+  text-transform: uppercase; margin-bottom: var(--space-2);
+}
+.hero-title {
+  font-size: var(--fs-hero); font-family: var(--font-head);
+  color: var(--color-primary-dark); line-height: 1.1;
+  margin-bottom: var(--space-3);
+}
+.hero-subtitle { font-size: var(--fs-base); color: var(--color-text-soft); margin-bottom: var(--space-4); }
+.hero-actions { display: flex; gap: var(--space-3); flex-wrap: wrap; }
+```
+
+---
+
+## 8. Forms (login, signup, checkout, address)
+
+```css
+.form-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  max-width: 440px; margin: var(--space-5) auto;
+  box-shadow: var(--shadow-sm);
+}
 .form-group { margin-bottom: var(--space-3); }
-.form-group label { display: block; font-size: var(--fs-sm); font-weight: 600; margin-bottom: 6px; color: var(--color-plum); }
-.form-group input, .form-group select, .form-group textarea {
+.form-label { display: block; font-size: var(--fs-sm); font-weight: 600; margin-bottom: 6px; }
+.form-input {
   width: 100%; padding: 11px var(--space-3);
-  border: 1px solid var(--color-border); border-radius: var(--radius);
-  font-size: var(--fs-base); background: #fff;
+  border: 1.5px solid var(--color-border); border-radius: var(--radius);
+  font-family: var(--font-body); font-size: var(--fs-base);
+  transition: border-color 0.15s;
 }
-.form-group input:focus { outline: 2px solid var(--color-gold); border-color: var(--color-gold); }
-.error-msg { color: var(--color-danger); font-size: var(--fs-sm); margin-bottom: var(--space-2); }
-.success-msg { color: var(--color-success); font-size: var(--fs-sm); margin-bottom: var(--space-2); }
+.form-input:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 3px rgba(45,106,79,0.12); }
+.form-error { color: var(--color-danger); font-size: var(--fs-xs); margin-top: 4px; }
 ```
 
 ---
 
-## 6. Flash messages (Flask `flash()`)
+## 9. Footer
 
-```css
-.flash { padding: var(--space-3); border-radius: var(--radius); margin: var(--space-3) 0; font-size: var(--fs-sm); }
-.flash-success { background: #eef3ea; color: var(--color-success); border: 1px solid #cfe0c5; }
-.flash-error   { background: #f7e9e7; color: var(--color-danger);  border: 1px solid #e8c5c0; }
-.flash-info    { background: #f3ece2; color: var(--color-plum);    border: 1px solid var(--color-border); }
-```
-
----
-
-## 7. Page layout pattern (every content page)
-
-```
-[ navbar (from base.html) ]
-[ flash messages ]
-[ .container ]
-   [ page heading (h1, serif, plum) ]
-   [ main content: grid / card / form ]
-[ footer ]
-```
-
-- Always wrap page content in `<div class="container">`.
-- Headings use the serif `--font-head` in plum.
-- Keep `base.html` owning the navbar + footer; child templates only fill the content block.
-- Optional hero section on homepage: plum background, cream/gold text, serif headline at `--fs-hero`.
-
----
-
-## 8. Footer
+- Background: `--color-primary-dark` (dark green), cream/white text, gold links.
+- 3-4 columns: About Karvii, Shop (categories), Account links, Social + Contact.
+- Bottom bar: copyright.
 
 ```css
 .footer {
-  background: var(--color-plum); color: var(--color-cream);
-  padding: var(--space-5) 0; margin-top: var(--space-5); font-size: var(--fs-sm);
+  background: var(--color-primary-dark); color: #e8f5e9;
+  padding: var(--space-6) 0 var(--space-4);
 }
-.footer a { color: var(--color-gold); }
+.footer h4 { color: #fff; font-family: var(--font-body); font-weight: 700; margin-bottom: var(--space-3); }
+.footer a { color: rgba(255,255,255,0.7); font-size: var(--fs-sm); line-height: 2; }
 .footer a:hover { color: #fff; }
+.footer-bottom {
+  border-top: 1px solid rgba(255,255,255,0.1);
+  margin-top: var(--space-4); padding-top: var(--space-3);
+  text-align: center; color: rgba(255,255,255,0.5);
+  font-size: var(--fs-xs);
+}
 ```
 
 ---
 
-## 9. Do / Don't checklist
+## 10. Flash / Toast Messages
 
-**DO**
-- Reuse `.btn`, `.product-card`, `.card`, `.form-group` everywhere.
-- Use `--space-*` and `--fs-*` tokens for all spacing/sizes.
-- Use serif `--font-head` for headings, sans `--font-body` for text.
-- Use gold sparingly as an accent (CTAs, borders, highlights).
-- Keep one `style.css` linked from `base.html`.
-
-**DON'T**
-- Don't hardcode hex colors in templates — use the variables.
-- Don't flood pages with gold or use bright blue/orange (old marketplace look).
-- Don't invent new button colors or new card styles per page.
-- Don't put inline `style="..."` for things a class already covers.
-- Don't break the responsive grid (always use `auto-fill, minmax`).
+```css
+.toast { padding: var(--space-3) var(--space-4); border-radius: var(--radius); font-size: var(--fs-sm); font-weight: 500; }
+.toast-success { background: #D1FAE5; color: var(--color-success); border: 1px solid var(--color-border-green); }
+.toast-error   { background: #FEE2E2; color: var(--color-danger); border: 1px solid #FECACA; }
+.toast-info    { background: var(--color-accent-soft); color: var(--color-accent); border: 1px solid #FDDBB4; }
+```
 
 ---
 
-## 10. When applying this skill
+## 11. Section layout pattern (every page)
 
-1. If `static/css/style.css` doesn't exist yet, create it with the tokens + all component classes above, and add the Google Fonts links + stylesheet link in `base.html` `<head>` (see section 1).
-2. Put the brand logo at `static/img/logo.png` (transparent background preferred) and show it in the navbar.
-3. Refactor existing templates to use these classes (one page at a time).
-4. For any NEW page/feature, build it directly with these classes from the start.
-5. After styling a page, open it in the browser and confirm it looks consistent and premium before moving on.
+```
+[ Navbar ]
+[ Offer Banner (optional, homepage + catalog) ]
+[ Page content inside .container ]
+[ Footer ]
+```
+
+---
+
+## 12. Do / Don't
+
+**DO**
+- Use `--color-primary` (green) for main structure, CTAs, headings
+- Use `--color-accent` (terracotta) for Add to Cart, highlights, tags
+- Use `--color-surface-warm` for section backgrounds (not heavy brown)
+- Keep product images on WHITE or `--color-surface-warm` bg (object-fit: contain)
+- Use weight pills for masala size variants
+- Keep the hero LIGHT and FRESH (not dark brown)
+
+**DON'T**
+- Don't use heavy dark brown (#5C3D11 type) as page/section background
+- Don't use the old plum/fashion colors (#3D1A2B etc.) — this is a FOOD brand
+- Don't hardcode hex colors in JSX inline styles — use CSS variables
+- Don't use `object-fit: cover` on masala product images (packets will crop)
+- Don't make everything terracotta — green is primary, terracotta is accent only
+
+---
+
+## 13. When applying this skill
+
+1. This is a **React frontend** — all styles go in `frontend/src/index.css` (global tokens + shared classes) or component `.css` files.
+2. Use CSS classes in JSX (`className="btn btn-cart"`), not inline styles.
+3. For a NEW component: read this skill → use the tokens → reuse existing classes.
+4. For RESTYLING: replace old brown/beige with the new tokens above.
+5. After styling, open the browser (npm run dev) and confirm it looks fresh, natural, and food-brand-appropriate.
