@@ -16,7 +16,7 @@ export default function AdminDashboard() {
   return (
     <div className="admin-layout">
       <aside className="admin-sidebar">
-        <div style={{ padding: '0 20px 20px', fontFamily: 'var(--font-head)', color: 'var(--brown)', fontSize: 18, fontWeight: 700 }}>
+        <div style={{ padding: '0 20px 20px', fontFamily: 'var(--font-head)', color: 'var(--color-primary-dark)', fontSize: 18, fontWeight: 700 }}>
           🌶 Admin
         </div>
         <Link to="/admin"          className="admin-nav-link active">Dashboard</Link>
@@ -25,7 +25,7 @@ export default function AdminDashboard() {
         <Link to="/"               className="admin-nav-link">← Back to Store</Link>
       </aside>
       <div className="admin-content">
-        <h2 style={{ fontFamily: 'var(--font-head)', color: 'var(--brown)', marginBottom: 28 }}>Dashboard</h2>
+        <h2 style={{ fontFamily: 'var(--font-head)', color: 'var(--color-primary-dark)', marginBottom: 28 }}>Dashboard</h2>
         <div className="stats-grid">
           <div className="card stat-card">
             <div className="stat-number">{data?.product_count ?? 0}</div>
