@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { getOrder } from '../api/orders'
+import { getOrder, requestReturn } from '../api/orders'
 import OrderTimeline from '../components/OrderTimeline'
 import Spinner from '../components/Spinner'
 
@@ -8,12 +8,33 @@ const statusClass = s => `status-badge badge-${s}`
 
 export default function OrderDetailPage() {
   const { id }    = useParams()
-  const [data, setData]   = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [data, setData]         = useState(null)
+  const [loading, setLoading]   = useState(true)
+  const [returnReason,   setReturnReason]   = useState('')
+  const [showReturnForm, setShowReturnForm] = useState(false)
+  const [returnMsg,      setReturnMsg]      = useState(null)
+  const [returnBusy,     setReturnBusy]     = useState(false)
 
-  useEffect(() => {
+  const load = () => {
+    setLoading(true)
     getOrder(id).then(r => setData(r.data)).finally(() => setLoading(false))
-  }, [id])
+  }
+
+  useEffect(() => { load() }, [id])
+
+  const handleReturnRequest = async () => {
+    if (!returnReason.trim()) return
+    setReturnBusy(true)
+    try {
+      await requestReturn(order.id, returnReason)
+      setReturnMsg({ type: 'success', text: 'Return request submitted! Admin will review shortly.' })
+      setShowReturnForm(false)
+      setReturnReason('')
+      load()
+    } catch (err) {
+      setReturnMsg({ type: 'error', text: err.response?.data?.error || 'Failed to submit return.' })
+    } finally { setReturnBusy(false) }
+  }
 
   if (loading) return <Spinner />
   if (!data)   return <div className="page container"><p>Order not found.</p></div>
@@ -82,6 +103,80 @@ export default function OrderDetailPage() {
             courierName={order.courier_name}
             trackingNumber={order.tracking_number}
           />
+        </div>
+
+        {/* Return / Refund Section */}
+        <div className="return-section">
+          {order.status === 'delivered' && order.can_self_return && (
+            <div className="card" style={{ padding: 24 }}>
+              <h4 style={{ fontWeight: 600, marginBottom: 12, color: 'var(--color-text-soft)', fontSize: 13, textTransform: 'uppercase', letterSpacing: 1 }}>Return Order</h4>
+              {!showReturnForm ? (
+                <button className="btn btn-outline" onClick={() => setShowReturnForm(true)}>
+                  ↩ Return Order
+                </button>
+              ) : (
+                <div className="return-reason-form">
+                  <p style={{ fontSize: 13, color: 'var(--color-text-soft)' }}>
+                    Please tell us why you want to return this order. Refund = paid amount − delivery charge.
+                  </p>
+                  <textarea className="form-input" rows={3} placeholder="Reason for return..."
+                    value={returnReason} onChange={e => setReturnReason(e.target.value)} />
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <button className="btn btn-primary" onClick={handleReturnRequest}
+                      disabled={returnBusy || !returnReason.trim()}>
+                      {returnBusy ? 'Submitting...' : 'Submit Return Request'}
+                    </button>
+                    <button className="btn btn-outline"
+                      onClick={() => { setShowReturnForm(false); setReturnReason('') }}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+              {returnMsg && (
+                <div className={`alert alert-${returnMsg.type}`} style={{ marginTop: 12 }}>
+                  {returnMsg.text}
+                </div>
+              )}
+            </div>
+          )}
+
+          {order.status === 'delivered' && !order.can_self_return && (
+            <div className="return-banner return-banner--ineligible">
+              Return is not available for this order. Need help?{' '}
+              <a href="/contact" style={{ color: 'var(--color-primary)', fontWeight: 600 }}>Contact Us</a>
+            </div>
+          )}
+
+          {order.return_rejected_reason && order.status === 'delivered' && (
+            <div className="return-banner return-banner--rejected" style={{ marginTop: 8 }}>
+              Previous return was rejected: {order.return_rejected_reason}
+            </div>
+          )}
+
+          {order.status === 'return_requested' && (
+            <div className="return-banner return-banner--requested">
+              ⏳ Return request submitted — admin review pending.
+              {order.return_reason && (
+                <div style={{ marginTop: 4, fontSize: 12 }}>Your reason: {order.return_reason}</div>
+              )}
+            </div>
+          )}
+
+          {order.status === 'returned' && (
+            <div className="return-banner return-banner--approved">
+              ✅ Return approved — refund is being processed. Amount will reflect in 5–7 business days.
+            </div>
+          )}
+
+          {order.status === 'refunded' && (
+            <div className="return-banner return-banner--refunded">
+              ✅ Refund processed: <strong>₹{order.refund_amount?.toFixed(0)}</strong>
+              {order.shipping_fee > 0 && (
+                <> (₹{order.total?.toFixed(0)} paid − ₹{order.shipping_fee?.toFixed(0)} delivery charge)</>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

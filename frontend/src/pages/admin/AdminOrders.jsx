@@ -60,6 +60,7 @@ export default function AdminOrders() {
         <Link to="/admin"          className="admin-nav-link">Dashboard</Link>
         <Link to="/admin/products" className="admin-nav-link">Products</Link>
         <Link to="/admin/orders"   className="admin-nav-link active">Orders</Link>
+        <Link to="/admin/returns"  className="admin-nav-link">Returns</Link>
         <Link to="/"               className="admin-nav-link">← Back to Store</Link>
       </aside>
       <div className="admin-content">

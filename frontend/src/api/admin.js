@@ -8,3 +8,7 @@ export const editProduct       = (id, form)   => client.post(`/admin/products/${
 export const deleteProduct     = (id)         => client.post(`/admin/products/${id}/delete`)
 export const getOrders         = ()           => client.get('/admin/orders')
 export const updateOrderStatus = (id, data)   => client.post(`/admin/orders/${id}/status`, data)
+export const getReturns        = ()           => client.get('/admin/returns')
+export const approveReturn     = (id)         => client.post(`/admin/orders/${id}/return-approve`)
+export const rejectReturn      = (id, reason) => client.post(`/admin/orders/${id}/return-reject`, { reason })
+export const processRefund     = (id)         => client.post(`/admin/orders/${id}/refund`)

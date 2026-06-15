@@ -3,6 +3,7 @@ import sqlite3
 from werkzeug.security import generate_password_hash
 
 DATABASE = 'ecommerce.db'
+RETURN_WINDOW_DAYS = 7
 
 
 def get_db():
@@ -430,6 +431,18 @@ def migrate_db():
             conn.execute("UPDATE orders SET status_history = ? WHERE id = ?",
                          (hist, row['id']))
 
+        # Feature 16: customer return + refund columns
+        orders_cols = [r[1] for r in conn.execute("PRAGMA table_info(orders)").fetchall()]
+        for col, ddl in [
+            ('return_requested_at',    "ALTER TABLE orders ADD COLUMN return_requested_at TEXT"),
+            ('return_reason',          "ALTER TABLE orders ADD COLUMN return_reason TEXT"),
+            ('return_rejected_reason', "ALTER TABLE orders ADD COLUMN return_rejected_reason TEXT"),
+            ('refund_amount',          "ALTER TABLE orders ADD COLUMN refund_amount REAL"),
+            ('razorpay_refund_id',     "ALTER TABLE orders ADD COLUMN razorpay_refund_id TEXT"),
+        ]:
+            if col not in orders_cols:
+                conn.execute(ddl)
+
         conn.commit()
     finally:
         conn.close()
@@ -844,5 +857,57 @@ def update_courier_details(order_id, courier_name, tracking_number):
             (courier_name or None, tracking_number or None, order_id)
         )
         conn.commit()
+    finally:
+        conn.close()
+
+
+def can_self_return(user_id, order_id):
+    """Return (eligible: bool, reason: str|None). Enforces all 4 spec rules."""
+    import json as _json
+    from datetime import datetime, timezone
+
+    conn = get_db()
+    try:
+        order = conn.execute(
+            "SELECT * FROM orders WHERE id=?", (order_id,)
+        ).fetchone()
+        if not order or order['user_id'] != user_id:
+            return False, "Order not found"
+
+        if order['status'] != 'delivered':
+            return False, "Order must be delivered to request a return"
+
+        # Determine delivery timestamp from status_history; fall back to created_at
+        delivered_at = None
+        raw_hist = order['status_history']
+        if raw_hist:
+            hist  = _json.loads(raw_hist)
+            entry = next((e for e in hist if e['status'] == 'delivered'), None)
+            if entry and entry.get('at'):
+                try:
+                    delivered_at = datetime.fromisoformat(entry['at']).replace(tzinfo=timezone.utc)
+                except ValueError:
+                    pass
+        if delivered_at is None:
+            try:
+                delivered_at = datetime.fromisoformat(
+                    order['created_at']
+                ).replace(tzinfo=timezone.utc)
+            except (ValueError, TypeError):
+                pass
+
+        if delivered_at:
+            if (datetime.now(timezone.utc) - delivered_at).days >= RETURN_WINDOW_DAYS:
+                return False, f"Return window of {RETURN_WINDOW_DAYS} days has passed"
+
+        # Per-user lifetime limit: 1 self-return only
+        used = conn.execute("""
+            SELECT COUNT(*) FROM orders
+            WHERE user_id=? AND status IN ('returned', 'refunded')
+        """, (user_id,)).fetchone()[0]
+        if used > 0:
+            return False, "Self-return limit reached (1 per customer lifetime)"
+
+        return True, None
     finally:
         conn.close()

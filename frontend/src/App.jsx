@@ -21,6 +21,7 @@ import AccountPage       from './pages/AccountPage'
 import AdminDashboard    from './pages/admin/AdminDashboard'
 import AdminProducts     from './pages/admin/AdminProducts'
 import AdminOrders       from './pages/admin/AdminOrders'
+import AdminReturns      from './pages/admin/AdminReturns'
 import NotFoundPage      from './pages/NotFoundPage'
 
 export default function App() {
@@ -47,6 +48,7 @@ export default function App() {
             <Route path="/admin"          element={<AdminGuard><AdminDashboard /></AdminGuard>} />
             <Route path="/admin/products" element={<AdminGuard><AdminProducts /></AdminGuard>} />
             <Route path="/admin/orders"   element={<AdminGuard><AdminOrders /></AdminGuard>} />
+            <Route path="/admin/returns"  element={<AdminGuard><AdminReturns /></AdminGuard>} />
 
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
