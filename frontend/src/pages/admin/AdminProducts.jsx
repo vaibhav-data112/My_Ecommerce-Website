@@ -60,6 +60,16 @@ function ProductForm({ title, form, setForm, categories, onSubmit, onCancel, sub
           </div>
           <div className="form-group">
             <label className="form-label">Upload Image (optional)</label>
+            {form.image_url && (
+              <div style={{ marginBottom: 8 }}>
+                <img
+                  src={form.image_url.startsWith('http') ? form.image_url : `/static/${form.image_url}`}
+                  alt="Current"
+                  style={{ width: 64, height: 64, objectFit: 'contain', borderRadius: 6, border: '1px solid var(--color-border)', padding: 4, display: 'block' }}
+                />
+                <small style={{ color: 'var(--color-text-soft)', fontSize: 12 }}>Current image — upload a new file to replace</small>
+              </div>
+            )}
             <input id={imageInputId} type="file" accept="image/*"
               className="form-input" style={{ padding: '6px 10px' }} />
           </div>
