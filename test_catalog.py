@@ -20,129 +20,204 @@ _db.DATABASE = _test_db
 from app import app
 
 app.config['TESTING'] = True
+app.config['WTF_CSRF_ENABLED'] = False
 
 
-def get_client():
-    return app.test_client()
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _db_conn():
+    conn = sqlite3.connect(_test_db)
+    conn.row_factory = sqlite3.Row
+    return conn
 
 
-def test_ac1_listing_shows_all_products():
-    c = get_client()
-    r = c.get('/products')
-    assert r.status_code == 200
-    body = r.data.decode()
-    expected = [
-        'Wireless Earbuds', 'Cotton T-Shirt', 'Yoga Mat',
-        'Python Programming Book', 'Face Moisturizer', 'Ceramic Mug Set',
-    ]
-    for name in expected:
-        assert name in body, f'AC-1 fail: "{name}" not in listing'
-    print('AC-1 PASS: listing shows all 6 seeded products')
+def _create_product(name, description='Test desc', price=99.0, stock=50, category='Whole Spices', image_url=''):
+    conn = _db_conn()
+    cur = conn.execute(
+        "INSERT INTO products (name, description, price, stock, category, image_url) VALUES (?, ?, ?, ?, ?, ?)",
+        (name, description, price, stock, category, image_url)
+    )
+    pid = cur.lastrowid
+    conn.commit()
+    conn.close()
+    return pid
 
+
+def _login(client, email, password='password123'):
+    return client.post('/api/auth/login', json={'email': email, 'password': password})
+
+
+def _create_user(email, name='Test User', password='password123', is_admin=False):
+    from werkzeug.security import generate_password_hash
+    conn = _db_conn()
+    cur = conn.execute(
+        "INSERT INTO users (name, email, password_hash, is_admin) VALUES (?, ?, ?, ?)",
+        (name, email, generate_password_hash(password), int(is_admin))
+    )
+    uid = cur.lastrowid
+    conn.commit()
+    conn.close()
+    return uid
+
+
+# ---------------------------------------------------------------------------
+# AC-1: GET /api/products returns a list of products with expected fields
+# ---------------------------------------------------------------------------
+
+def test_ac1_listing_returns_products():
+    pid = _create_product('Cumin Seeds Test')
+    c = app.test_client()
+    r = c.get('/api/products')
+    assert r.status_code == 200, f"Expected 200, got {r.status_code}"
+    data = r.get_json()
+    assert 'products' in data
+    assert isinstance(data['products'], list)
+    assert len(data['products']) > 0
+
+    names = [p['name'] for p in data['products']]
+    assert 'Cumin Seeds Test' in names, f"Created product not in listing: {names}"
+    print('AC-1 PASS: GET /api/products returns product list')
+
+
+# ---------------------------------------------------------------------------
+# AC-2: Catalog browsable without login (no 401)
+# ---------------------------------------------------------------------------
 
 def test_ac2_browse_without_login():
-    c = get_client()
-    r = c.get('/products', follow_redirects=False)
-    assert r.status_code == 200, f'AC-2 fail: listing redirected ({r.status_code})'
+    c = app.test_client()
+    r = c.get('/api/products')
+    assert r.status_code == 200, f"Expected 200, got {r.status_code}"
 
-    conn = sqlite3.connect(_test_db)
-    first_id = conn.execute("SELECT id FROM products LIMIT 1").fetchone()[0]
+    conn = _db_conn()
+    pid = conn.execute("SELECT id FROM products LIMIT 1").fetchone()[0]
     conn.close()
 
-    r2 = c.get(f'/products/{first_id}', follow_redirects=False)
-    assert r2.status_code == 200, f'AC-2 fail: detail redirected ({r2.status_code})'
+    r2 = c.get(f'/api/products/{pid}')
+    assert r2.status_code == 200, f"Expected 200 for product detail, got {r2.status_code}"
     print('AC-2 PASS: catalog browsable without login')
 
 
-def test_ac3_card_links_to_detail():
-    c = get_client()
-    r = c.get('/products')
-    body = r.data.decode()
-    assert '/products/1' in body or '/products/2' in body, \
-        f'AC-3 fail: no /products/<id> links found'
-    print('AC-3 PASS: listing contains links to detail pages')
+# ---------------------------------------------------------------------------
+# AC-3: Product list response includes pagination fields
+# ---------------------------------------------------------------------------
 
+def test_ac3_listing_has_pagination():
+    c = app.test_client()
+    r = c.get('/api/products')
+    data = r.get_json()
+    assert 'total' in data
+    assert 'page' in data
+    assert 'total_pages' in data
+    assert data['page'] == 1
+    print('AC-3 PASS: product listing includes pagination fields')
+
+
+# ---------------------------------------------------------------------------
+# AC-4: GET /api/products/<id> returns full product info
+# ---------------------------------------------------------------------------
 
 def test_ac4_detail_shows_full_info():
-    conn = sqlite3.connect(_test_db)
-    row = conn.execute("SELECT * FROM products WHERE name='Wireless Earbuds'").fetchone()
-    conn.close()
-    pid = row[0]
+    pid = _create_product(
+        name='Turmeric Detail Test',
+        description='Premium turmeric with high curcumin',
+        price=89.0,
+        stock=100,
+        category='Ground Spices'
+    )
+    c = app.test_client()
+    r = c.get(f'/api/products/{pid}')
+    assert r.status_code == 200, f"Expected 200, got {r.status_code}"
+    data = r.get_json()
+    assert 'product' in data
+    p = data['product']
+    assert p['name'] == 'Turmeric Detail Test'
+    assert 'curcumin' in p['description']
+    assert p['price'] == 89.0
+    assert p['category'] == 'Ground Spices'
+    assert 'stock' in p
+    print('AC-4 PASS: detail returns name, description, price, category, stock')
 
-    c = get_client()
-    r = c.get(f'/products/{pid}')
+
+# ---------------------------------------------------------------------------
+# AC-5: Out-of-stock product returns stock=0 in detail
+# ---------------------------------------------------------------------------
+
+def test_ac5_out_of_stock_product():
+    pid = _create_product('OOS Test Product', stock=0)
+    c = app.test_client()
+    r = c.get(f'/api/products/{pid}')
     assert r.status_code == 200
-    body = r.data.decode()
-    assert 'Wireless Earbuds' in body, 'AC-4: name missing'
-    assert 'Bluetooth' in body, 'AC-4: description missing'
-    assert '29.99' in body, 'AC-4: price missing'
-    assert 'Electronics' in body, 'AC-4: category missing'
-    assert 'stock' in body.lower(), 'AC-4: stock status missing'
-    print('AC-4 PASS: detail shows name, description, price, category, stock')
+    data = r.get_json()
+    assert data['product']['stock'] == 0, "Expected stock=0 for OOS product"
+    print('AC-5 PASS: out-of-stock product has stock=0 in response')
 
 
-def test_ac5_out_of_stock_display():
-    conn = sqlite3.connect(_test_db)
-    conn.execute("INSERT INTO products (name, description, price, stock, category) VALUES (?, ?, ?, ?, ?)",
-                 ('Test OOS', 'desc', 9.99, 0, 'Other'))
-    conn.commit()
-    pid = conn.execute("SELECT id FROM products WHERE name='Test OOS'").fetchone()[0]
-    conn.close()
-
-    c = get_client()
-    r = c.get(f'/products/{pid}')
-    body = r.data.decode()
-    assert 'Out of Stock' in body or 'Out of stock' in body, \
-        f'AC-5 fail: OOS label missing'
-    assert 'Add to Cart' not in body or 'btn-disabled' in body, \
-        'AC-5 fail: Add to Cart button shown for OOS product'
-    print('AC-5 PASS: out-of-stock product shows OOS label and disabled button')
-
+# ---------------------------------------------------------------------------
+# AC-6: Invalid product ID returns 404
+# ---------------------------------------------------------------------------
 
 def test_ac6_invalid_id_404():
-    c = get_client()
-    r = c.get('/products/99999')
-    assert r.status_code == 404, f'AC-6 fail: status={r.status_code}'
-    body = r.data.decode()
-    assert 'not found' in body.lower(), 'AC-6 fail: no friendly message'
-    print('AC-6 PASS: invalid product id returns 404 with friendly page')
+    c = app.test_client()
+    r = c.get('/api/products/99999')
+    assert r.status_code == 404, f"Expected 404, got {r.status_code}"
+    data = r.get_json()
+    assert 'error' in data
+    print('AC-6 PASS: invalid product ID returns 404 with error message')
 
 
-def test_ac7_add_to_cart_placeholder():
-    c = get_client()
-    conn = sqlite3.connect(_test_db)
-    pid = conn.execute("SELECT id FROM products WHERE stock > 0 LIMIT 1").fetchone()[0]
-    conn.close()
+# ---------------------------------------------------------------------------
+# AC-7: Product detail includes reviews / avg_rating fields
+# ---------------------------------------------------------------------------
 
-    r = c.get(f'/products/{pid}')
-    assert 'Add to Cart' in r.data.decode(), 'AC-7 fail: Add to Cart button missing'
+def test_ac7_detail_includes_review_fields():
+    pid = _create_product('Review Fields Test')
+    c = app.test_client()
+    r = c.get(f'/api/products/{pid}')
+    data = r.get_json()
+    assert 'reviews' in data
+    assert 'avg_rating' in data
+    assert 'review_count' in data
+    assert isinstance(data['reviews'], list)
+    print('AC-7 PASS: product detail includes reviews, avg_rating, review_count')
 
-    r2 = c.post('/cart/add', data={'product_id': str(pid)}, follow_redirects=True)
-    assert r2.status_code == 200
-    assert 'coming soon' in r2.data.decode().lower(), \
-        'AC-7 fail: cart placeholder flash missing'
-    print('AC-7 PASS: Add to Cart button present; placeholder flash shown on POST')
+
+# ---------------------------------------------------------------------------
+# AC-8: in_wishlist field present; False for unauthenticated, accessible for auth
+# ---------------------------------------------------------------------------
+
+def test_ac8_wishlist_field_in_detail():
+    pid = _create_product('Wishlist Field Test')
+    c = app.test_client()
+
+    r = c.get(f'/api/products/{pid}')
+    data = r.get_json()
+    assert 'in_wishlist' in data
+    assert data['in_wishlist'] is False, "Unauthenticated user should have in_wishlist=False"
+
+    _create_user('catalog8@test.com')
+    _login(c, 'catalog8@test.com')
+    r2 = c.get(f'/api/products/{pid}')
+    data2 = r2.get_json()
+    assert 'in_wishlist' in data2
+    print('AC-8 PASS: in_wishlist field present in product detail')
 
 
-def test_ac8_nav_shows_auth_state():
-    c = get_client()
-    r = c.get('/products')
-    body = r.data.decode()
-    assert 'Login' in body or 'Sign Up' in body, \
-        'AC-8 fail: nav auth links missing for logged-out user'
-    print('AC-8 PASS: nav shows Login/Sign Up for logged-out visitor')
-
+# ---------------------------------------------------------------------------
+# Runner
+# ---------------------------------------------------------------------------
 
 if __name__ == '__main__':
     tests = [
-        test_ac1_listing_shows_all_products,
+        test_ac1_listing_returns_products,
         test_ac2_browse_without_login,
-        test_ac3_card_links_to_detail,
+        test_ac3_listing_has_pagination,
         test_ac4_detail_shows_full_info,
-        test_ac5_out_of_stock_display,
+        test_ac5_out_of_stock_product,
         test_ac6_invalid_id_404,
-        test_ac7_add_to_cart_placeholder,
-        test_ac8_nav_shows_auth_state,
+        test_ac7_detail_includes_review_fields,
+        test_ac8_wishlist_field_in_detail,
     ]
     passed = failed = 0
     for t in tests:

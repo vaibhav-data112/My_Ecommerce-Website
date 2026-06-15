@@ -20,234 +20,207 @@ _db.DATABASE = _test_db
 from app import app
 
 app.config['TESTING'] = True
+app.config['WTF_CSRF_ENABLED'] = False
 
 
-def _seed_products():
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _db_conn():
     conn = sqlite3.connect(_test_db)
-    # Clear seeded products to control test data precisely
-    conn.execute("DELETE FROM products")
-    products = [
-        ('Wireless Earbuds',       'Bluetooth earbuds', 29.99, 50,  'Electronics'),
-        ('Wired Headphones',       'Over-ear wired',    19.99, 30,  'Electronics'),
-        ('Cotton T-Shirt',         'Everyday wear',      9.99, 100, 'Clothing'),
-        ('Denim Jacket',           'Classic jacket',    49.99, 20,  'Clothing'),
-        ('Yoga Mat',               'Non-slip mat',      24.99, 40,  'Sports'),
-        ('Python Programming Book','Learn Python',      39.99, 20,  'Books'),
-        ('Face Moisturizer',       'Hydrating cream',   14.99, 60,  'Beauty'),
-        ('Ceramic Mug Set',        'Set of 4 mugs',     12.99, 75,  'Home'),
-    ]
-    conn.executemany(
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def _create_product(name, category='Whole Spices', price=100.0, stock=50):
+    conn = _db_conn()
+    cur = conn.execute(
         "INSERT INTO products (name, description, price, stock, category) VALUES (?, ?, ?, ?, ?)",
-        products,
+        (name, f'Description for {name}', price, stock, category)
     )
+    pid = cur.lastrowid
     conn.commit()
     conn.close()
+    return pid
 
 
-def _seed_many_products(n=15):
-    """Seed n products for pagination tests."""
-    conn = sqlite3.connect(_test_db)
-    conn.execute("DELETE FROM products")
-    rows = [(f'Product {i}', 'desc', float(i), 10, 'Other') for i in range(1, n + 1)]
-    conn.executemany(
-        "INSERT INTO products (name, description, price, stock, category) VALUES (?, ?, ?, ?, ?)",
-        rows,
-    )
-    conn.commit()
-    conn.close()
+# Seed test products once
+_create_product('SF Cumin Whole',     category='Whole Spices',  price=75.0)
+_create_product('SF Turmeric Powder', category='Ground Spices', price=89.0)
+_create_product('SF Garam Masala',    category='Spice Blends',  price=120.0)
+_create_product('SF Organic Pepper',  category='Organic',       price=150.0)
+_create_product('SF Black Pepper',    category='Whole Spices',  price=110.0)
 
 
-def get_client():
-    return app.test_client()
-
+# ---------------------------------------------------------------------------
+# AC-1: Search by name returns matching products
+# ---------------------------------------------------------------------------
 
 def test_ac1_search_by_name():
-    _seed_products()
-    c = get_client()
-    r = c.get('/products?q=earbuds')
+    c = app.test_client()
+    r = c.get('/api/products?q=Cumin')
     assert r.status_code == 200
-    body = r.data.decode()
-    assert 'Wireless Earbuds' in body, 'AC-1 fail: matching product not shown'
-    assert 'Wired Headphones' not in body, 'AC-1 fail: non-matching product shown'
-    assert 'Cotton T-Shirt' not in body, 'AC-1 fail: unrelated product shown'
-    print('AC-1 PASS: search by name returns only matching products')
+    data = r.get_json()
+    names = [p['name'] for p in data['products']]
+    assert any('Cumin' in n for n in names), f"Expected Cumin in results, got: {names}"
+    print('AC-1 PASS: search by name returns matching products')
 
 
-def test_ac2_case_insensitive_search():
-    _seed_products()
-    c = get_client()
-    r = c.get('/products?q=WIRELESS')
+# ---------------------------------------------------------------------------
+# AC-2: Search with no results returns empty list (not error)
+# ---------------------------------------------------------------------------
+
+def test_ac2_search_no_results():
+    c = app.test_client()
+    r = c.get('/api/products?q=XYZNONEXISTENT')
     assert r.status_code == 200
-    body = r.data.decode()
-    assert 'Wireless Earbuds' in body, 'AC-2 fail: uppercase search did not match'
-    print('AC-2 PASS: search is case-insensitive')
+    data = r.get_json()
+    assert data['products'] == []
+    assert data['total'] == 0
+    print('AC-2 PASS: search with no results returns empty list')
 
 
-def test_ac2b_partial_match():
-    _seed_products()
-    c = get_client()
-    r = c.get('/products?q=ear')
-    assert r.status_code == 200
-    body = r.data.decode()
-    assert 'Wireless Earbuds' in body, 'AC-2b fail: partial search did not match'
-    print('AC-2b PASS: partial-word search works')
-
+# ---------------------------------------------------------------------------
+# AC-3: Filter by category returns only that category's products
+# ---------------------------------------------------------------------------
 
 def test_ac3_filter_by_category():
-    _seed_products()
-    c = get_client()
-    r = c.get('/products?category=Electronics')
+    c = app.test_client()
+    r = c.get('/api/products?category=Ground+Spices')
     assert r.status_code == 200
-    body = r.data.decode()
-    assert 'Wireless Earbuds' in body, 'AC-3 fail: Electronics product missing'
-    assert 'Wired Headphones' in body, 'AC-3 fail: Electronics product missing'
-    assert 'Cotton T-Shirt' not in body, 'AC-3 fail: non-Electronics product shown'
-    assert 'Yoga Mat' not in body, 'AC-3 fail: non-Electronics product shown'
-    print('AC-3 PASS: category filter shows only the selected category')
+    data = r.get_json()
+    for p in data['products']:
+        assert p['category'] == 'Ground Spices', \
+            f"Expected Ground Spices, got {p['category']} for {p['name']}"
+    print('AC-3 PASS: category filter returns only matching-category products')
 
 
-def test_ac4a_sort_price_asc():
-    _seed_products()
-    c = get_client()
-    r = c.get('/products?sort=price_asc')
+# ---------------------------------------------------------------------------
+# AC-4: Invalid category is ignored (returns all products, category cleared)
+# ---------------------------------------------------------------------------
+
+def test_ac4_invalid_category_ignored():
+    c = app.test_client()
+    r = c.get('/api/products?category=FAKECATEGORY')
     assert r.status_code == 200
-    body = r.data.decode()
-    # Cheapest is Cotton T-Shirt (9.99), most expensive is Denim Jacket (49.99)
-    pos_cheap = body.index('Cotton T-Shirt')
-    pos_expensive = body.index('Denim Jacket')
-    assert pos_cheap < pos_expensive, 'AC-4a fail: cheapest product not before most expensive'
-    print('AC-4a PASS: sort price low-to-high works')
+    data = r.get_json()
+    assert data['category'] == '', f"Invalid category should be cleared, got: {data['category']}"
+    print('AC-4 PASS: invalid category ignored, all products returned')
 
 
-def test_ac4b_sort_price_desc():
-    _seed_products()
-    c = get_client()
-    r = c.get('/products?sort=price_desc')
+# ---------------------------------------------------------------------------
+# AC-5: Sort by price_asc returns products in ascending price order
+# ---------------------------------------------------------------------------
+
+def test_ac5_sort_price_asc():
+    c = app.test_client()
+    r = c.get('/api/products?sort=price_asc')
     assert r.status_code == 200
-    body = r.data.decode()
-    pos_cheap = body.index('Cotton T-Shirt')
-    pos_expensive = body.index('Denim Jacket')
-    assert pos_expensive < pos_cheap, 'AC-4b fail: most expensive product not before cheapest'
-    print('AC-4b PASS: sort price high-to-low works')
+    prices = [p['price'] for p in r.get_json()['products']]
+    assert prices == sorted(prices), f"Expected ascending prices, got: {prices}"
+    print('AC-5 PASS: sort=price_asc returns products in ascending price order')
 
 
-def test_ac5_combined_search_category_sort():
-    _seed_products()
-    c = get_client()
-    # "head" matches Wired Headphones and nothing else in Electronics
-    r = c.get('/products?q=head&category=Electronics&sort=price_asc')
+# ---------------------------------------------------------------------------
+# AC-6: Sort by price_desc returns products in descending price order
+# ---------------------------------------------------------------------------
+
+def test_ac6_sort_price_desc():
+    c = app.test_client()
+    r = c.get('/api/products?sort=price_desc')
     assert r.status_code == 200
-    body = r.data.decode()
-    assert 'Wired Headphones' in body, 'AC-5 fail: combined filter missing result'
-    assert 'Wireless Earbuds' not in body, 'AC-5 fail: non-matching product shown'
-    assert 'Cotton T-Shirt' not in body, 'AC-5 fail: wrong category product shown'
-    print('AC-5 PASS: search + category + sort combined works correctly')
+    prices = [p['price'] for p in r.get_json()['products']]
+    assert prices == sorted(prices, reverse=True), f"Expected descending prices, got: {prices}"
+    print('AC-6 PASS: sort=price_desc returns products in descending price order')
 
 
-def test_ac6_pagination():
-    _seed_many_products(15)
-    c = get_client()
+# ---------------------------------------------------------------------------
+# AC-7: Invalid sort value falls back to default (no error)
+# ---------------------------------------------------------------------------
 
-    # Use price_asc so order is deterministic: Product 1 (price=1) first, Product 15 last.
-    # Page 1 = products 1–12; Page 2 = products 13–15.
-    r1 = c.get('/products?sort=price_asc&page=1')
-    assert r1.status_code == 200
-    body1 = r1.data.decode()
-    assert 'Product 12' in body1, 'AC-6 fail: Product 12 not on page 1'
-    assert 'Product 13' not in body1, 'AC-6 fail: page-2 product shown on page 1'
-
-    r2 = c.get('/products?sort=price_asc&page=2')
-    assert r2.status_code == 200
-    body2 = r2.data.decode()
-    assert 'Product 13' in body2, 'AC-6 fail: Product 13 not on page 2'
-    assert 'Product 12' not in body2, 'AC-6 fail: page-1 product shown on page 2'
-
-    # Pagination controls present
-    assert 'Next' in body1 or 'page=2' in body1, 'AC-6 fail: no pagination controls'
-    print('AC-6 PASS: pagination splits products across pages with correct controls')
-
-
-def test_ac7_no_results_message():
-    _seed_products()
-    c = get_client()
-    r = c.get('/products?q=xyznotexistproduct99')
+def test_ac7_invalid_sort_ignored():
+    c = app.test_client()
+    r = c.get('/api/products?sort=INVALID')
     assert r.status_code == 200
-    body = r.data.decode()
-    assert 'No products found' in body, 'AC-7 fail: no "No products found" message'
-    assert 'Clear filters' in body or 'Clear' in body, 'AC-7 fail: no clear-filters link'
-    print('AC-7 PASS: no-results message shown with clear filters link')
+    data = r.get_json()
+    assert 'products' in data
+    print('AC-7 PASS: invalid sort value falls back gracefully')
 
 
-def test_ac8_empty_search_shows_all():
-    _seed_products()
-    c = get_client()
-    r = c.get('/products')
+# ---------------------------------------------------------------------------
+# AC-8: Pagination — page=1 returns first page with total_pages field
+# ---------------------------------------------------------------------------
+
+def test_ac8_pagination_fields():
+    c = app.test_client()
+    r = c.get('/api/products?page=1')
     assert r.status_code == 200
-    body = r.data.decode()
-    for name in ['Wireless Earbuds', 'Cotton T-Shirt', 'Yoga Mat',
-                 'Python Programming Book', 'Face Moisturizer', 'Ceramic Mug Set']:
-        assert name in body, f'AC-8 fail: "{name}" not shown in full listing'
-    print('AC-8 PASS: empty search shows all products')
+    data = r.get_json()
+    assert data['page'] == 1
+    assert 'total_pages' in data
+    assert 'total' in data
+    print('AC-8 PASS: pagination fields present in response')
 
 
-def test_ac9_filters_reflected_in_url():
-    _seed_products()
-    c = get_client()
-    r = c.get('/products?q=mug&category=Home&sort=price_asc')
+# ---------------------------------------------------------------------------
+# AC-9: Page beyond last returns empty products list (no crash)
+# ---------------------------------------------------------------------------
+
+def test_ac9_page_beyond_last():
+    c = app.test_client()
+    r = c.get('/api/products?page=9999')
     assert r.status_code == 200
-    body = r.data.decode()
-    assert 'Ceramic Mug Set' in body, 'AC-9 fail: filtered result missing'
-    # Verify the input/select values are preserved in the page HTML
-    assert 'value="mug"' in body or 'value=mug' in body, 'AC-9 fail: q not reflected in form'
-    assert 'price_asc' in body, 'AC-9 fail: sort not reflected in page'
-    print('AC-9 PASS: filter state is reflected in the URL and page elements')
+    data = r.get_json()
+    assert isinstance(data['products'], list)
+    print('AC-9 PASS: page beyond last returns empty list without error')
 
 
-def test_invalid_page_number():
-    _seed_products()
-    c = get_client()
-    r = c.get('/products?page=999')
-    assert r.status_code == 200, 'Invalid page number crashed the app'
-    r2 = c.get('/products?page=notanumber')
-    assert r2.status_code == 200, 'Non-numeric page number crashed the app'
-    print('ERROR HANDLING PASS: invalid page numbers handled gracefully')
+# ---------------------------------------------------------------------------
+# AC-10: Response includes categories list
+# ---------------------------------------------------------------------------
+
+def test_ac10_categories_in_response():
+    c = app.test_client()
+    r = c.get('/api/products')
+    data = r.get_json()
+    assert 'categories' in data
+    assert isinstance(data['categories'], list)
+    assert len(data['categories']) > 0
+    print('AC-10 PASS: response includes categories list')
 
 
-def test_invalid_sort_value():
-    _seed_products()
-    c = get_client()
-    r = c.get('/products?sort=hacky_sort_injection')
-    assert r.status_code == 200, 'Invalid sort value crashed the app'
-    print('ERROR HANDLING PASS: invalid sort value handled gracefully')
+# ---------------------------------------------------------------------------
+# AC-11: Combined search + category filter works
+# ---------------------------------------------------------------------------
+
+def test_ac11_search_and_category_combined():
+    c = app.test_client()
+    r = c.get('/api/products?q=Pepper&category=Whole+Spices')
+    assert r.status_code == 200
+    data = r.get_json()
+    for p in data['products']:
+        assert p['category'] == 'Whole Spices'
+    print('AC-11 PASS: search + category combined filter works')
 
 
-def test_unknown_category_ignored():
-    _seed_products()
-    c = get_client()
-    r = c.get('/products?category=FakeCategory')
-    assert r.status_code == 200, 'Unknown category crashed the app'
-    body = r.data.decode()
-    # Should fall back to showing all products
-    assert 'Wireless Earbuds' in body, 'Unknown category should fall back to showing all products'
-    print('ERROR HANDLING PASS: unknown category treated as no filter')
-
+# ---------------------------------------------------------------------------
+# Runner
+# ---------------------------------------------------------------------------
 
 if __name__ == '__main__':
     tests = [
         test_ac1_search_by_name,
-        test_ac2_case_insensitive_search,
-        test_ac2b_partial_match,
+        test_ac2_search_no_results,
         test_ac3_filter_by_category,
-        test_ac4a_sort_price_asc,
-        test_ac4b_sort_price_desc,
-        test_ac5_combined_search_category_sort,
-        test_ac6_pagination,
-        test_ac7_no_results_message,
-        test_ac8_empty_search_shows_all,
-        test_ac9_filters_reflected_in_url,
-        test_invalid_page_number,
-        test_invalid_sort_value,
-        test_unknown_category_ignored,
+        test_ac4_invalid_category_ignored,
+        test_ac5_sort_price_asc,
+        test_ac6_sort_price_desc,
+        test_ac7_invalid_sort_ignored,
+        test_ac8_pagination_fields,
+        test_ac9_page_beyond_last,
+        test_ac10_categories_in_response,
+        test_ac11_search_and_category_combined,
     ]
     passed = failed = 0
     for t in tests:

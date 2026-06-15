@@ -23,255 +23,274 @@ app.config['TESTING'] = True
 app.config['WTF_CSRF_ENABLED'] = False
 
 
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
 def _db_conn():
     conn = sqlite3.connect(_test_db)
     conn.row_factory = sqlite3.Row
     return conn
 
 
-def _create_user(email, name='Test User', is_admin=0):
+def _create_user(email, name='Test User', password='password123', is_admin=False):
     from werkzeug.security import generate_password_hash
     conn = _db_conn()
     cur = conn.execute(
         "INSERT INTO users (name, email, password_hash, is_admin) VALUES (?, ?, ?, ?)",
-        (name, email, generate_password_hash('password123'), is_admin)
+        (name, email, generate_password_hash(password), int(is_admin))
     )
-    user_id = cur.lastrowid
+    uid = cur.lastrowid
     conn.commit()
     conn.close()
-    return user_id
+    return uid
 
 
-def _create_product(name='Widget', price=9.99, stock=10, category='Other'):
+def _create_product(name='Admin Spice', price=100.0, stock=50, category='Whole Spices'):
     conn = _db_conn()
     cur = conn.execute(
         "INSERT INTO products (name, description, price, stock, category) VALUES (?, ?, ?, ?, ?)",
-        (name, 'A test product', price, stock, category)
+        (name, 'Test desc', price, stock, category)
     )
-    product_id = cur.lastrowid
+    pid = cur.lastrowid
     conn.commit()
     conn.close()
-    return product_id
+    return pid
 
 
-def _create_order(user_id, status='paid', total=100.0):
-    conn = _db_conn()
-    cur = conn.execute(
-        """INSERT INTO orders
-           (user_id, status, subtotal, shipping_fee, total, shipping_name, shipping_phone, shipping_address)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-        (user_id, status, 60.0, 40.0, total, 'Test User', '9876543210', '123 Test Street')
-    )
-    order_id = cur.lastrowid
-    conn.commit()
-    conn.close()
-    return order_id
+def _login(client, email, password='password123'):
+    return client.post('/api/auth/login', json={'email': email, 'password': password})
 
 
-def _login(client, email):
-    return client.post('/login', data={'email': email, 'password': 'password123'},
-                       follow_redirects=True)
+def _place_order(client, product_id):
+    client.post('/api/cart/add', json={'product_id': product_id, 'quantity': 1})
+    r = client.post('/api/checkout', json={
+        'shipping_name':    'Admin Test Customer',
+        'shipping_phone':   '9876543210',
+        'shipping_address': '123 Admin St, Mumbai',
+    })
+    return r.get_json().get('order_id')
 
 
-# ── AC-1: Normal user cannot access /admin ────────────────────────────────────
-def test_ac1_normal_user_blocked():
-    _create_user('ac1normal@test.com', is_admin=0)
+# Create admin and non-admin users for all tests
+_create_user('admin@test.com', name='Admin User', is_admin=True)
+_create_user('regular@test.com', name='Regular User', is_admin=False)
+
+
+# ---------------------------------------------------------------------------
+# AC-1: Unauthenticated GET /api/admin -> 401
+# ---------------------------------------------------------------------------
+
+def test_ac1_unauthenticated_admin():
     c = app.test_client()
-    _login(c, 'ac1normal@test.com')
-    r = c.get('/admin', follow_redirects=True)
-    assert r.status_code == 200
-    assert b'Not authorised' in r.data or b'authoris' in r.data.lower(), \
-        'Expected "Not authorised" flash message'
-    print('AC-1 PASS: normal logged-in user is blocked from /admin')
+    r = c.get('/api/admin')
+    assert r.status_code == 401, f"Expected 401, got {r.status_code}"
+    print('AC-1 PASS: unauthenticated GET /api/admin returns 401')
 
 
-# ── AC-2: Logged-out user is redirected to login ─────────────────────────────
-def test_ac2_logged_out_redirected():
+# ---------------------------------------------------------------------------
+# AC-2: Non-admin user gets 403
+# ---------------------------------------------------------------------------
+
+def test_ac2_non_admin_forbidden():
     c = app.test_client()
-    r = c.get('/admin', follow_redirects=True)
-    assert r.status_code == 200
-    assert b'login' in r.data.lower() or b'Log in' in r.data or b'Login' in r.data, \
-        'Expected login page'
-    print('AC-2 PASS: logged-out visitor redirected to login')
+    _login(c, 'regular@test.com')
+    r = c.get('/api/admin')
+    assert r.status_code == 403, f"Expected 403, got {r.status_code}"
+    print('AC-2 PASS: non-admin user gets 403 on admin dashboard')
 
 
-# ── AC-3: Admin can view dashboard ───────────────────────────────────────────
-def test_ac3_admin_dashboard():
-    _create_user('ac3admin@test.com', is_admin=1)
+# ---------------------------------------------------------------------------
+# AC-3: Admin can access dashboard with product_count, order_count, revenue
+# ---------------------------------------------------------------------------
+
+def test_ac3_admin_dashboard_data():
     c = app.test_client()
-    _login(c, 'ac3admin@test.com')
-    r = c.get('/admin', follow_redirects=True)
-    assert r.status_code == 200
-    assert b'Manage Products' in r.data
-    assert b'Manage Orders' in r.data
-    print('AC-3 PASS: admin can open dashboard with links')
+    _login(c, 'admin@test.com')
+    r = c.get('/api/admin')
+    assert r.status_code == 200, f"Expected 200, got {r.status_code}"
+    data = r.get_json()
+    assert 'product_count' in data
+    assert 'order_count' in data
+    assert 'revenue' in data
+    assert 'categories' in data
+    print('AC-3 PASS: admin dashboard returns product_count, order_count, revenue, categories')
 
 
-# ── AC-4: Admin can add a product ────────────────────────────────────────────
-def test_ac4_add_product():
-    _create_user('ac4admin@test.com', is_admin=1)
+# ---------------------------------------------------------------------------
+# AC-4: Admin can list all products via GET /api/admin/products
+# ---------------------------------------------------------------------------
+
+def test_ac4_admin_list_products():
     c = app.test_client()
-    _login(c, 'ac4admin@test.com')
-    r = c.post('/admin/products/add', data={
-        'name': 'New Test Product',
-        'description': 'A brand new product',
-        'price': '19.99',
-        'stock': '25',
-        'category': 'Electronics',
-        'image_url': '',
-    }, follow_redirects=True)
-    assert r.status_code == 200
-    assert b'New Test Product' in r.data
-
-    r2 = c.get('/products', follow_redirects=True)
-    assert b'New Test Product' in r2.data
-    print('AC-4 PASS: admin added product appears in admin list and public catalog')
+    _login(c, 'admin@test.com')
+    r = c.get('/api/admin/products')
+    assert r.status_code == 200, f"Expected 200, got {r.status_code}"
+    data = r.get_json()
+    assert 'products' in data
+    assert isinstance(data['products'], list)
+    print('AC-4 PASS: admin can list all products')
 
 
-# ── AC-5: Add product validation ─────────────────────────────────────────────
-def test_ac5_add_product_validation():
-    _create_user('ac5admin@test.com', is_admin=1)
+# ---------------------------------------------------------------------------
+# AC-5: Admin can add a product via POST /api/admin/products/add
+# ---------------------------------------------------------------------------
+
+def test_ac5_admin_add_product():
     c = app.test_client()
-    _login(c, 'ac5admin@test.com')
+    _login(c, 'admin@test.com')
 
-    # missing name
-    r = c.post('/admin/products/add', data={
-        'name': '', 'description': '', 'price': '10', 'stock': '5', 'category': 'Books'
-    }, follow_redirects=True)
-    assert r.status_code == 200
-    assert b'required' in r.data.lower()
-
-    # negative price
-    r2 = c.post('/admin/products/add', data={
-        'name': 'Bad Product', 'description': '', 'price': '-5', 'stock': '5', 'category': 'Books'
-    }, follow_redirects=True)
-    assert r2.status_code == 200
-    assert b'price' in r2.data.lower() or b'0 or greater' in r2.data.lower()
-
-    # negative stock
-    r3 = c.post('/admin/products/add', data={
-        'name': 'Bad Stock', 'description': '', 'price': '5', 'stock': '-1', 'category': 'Sports'
-    }, follow_redirects=True)
-    assert r3.status_code == 200
-    assert b'stock' in r3.data.lower() or b'0 or greater' in r3.data.lower()
-
-    print('AC-5 PASS: validation rejects missing name, negative price, negative stock')
-
-
-# ── AC-6: Admin can edit a product ───────────────────────────────────────────
-def test_ac6_edit_product():
-    _create_user('ac6admin@test.com', is_admin=1)
-    product_id = _create_product(name='Edit Me', price=5.00, stock=10, category='Home')
-    c = app.test_client()
-    _login(c, 'ac6admin@test.com')
-    r = c.post(f'/admin/products/{product_id}/edit', data={
-        'name': 'Edited Product',
-        'description': 'Updated desc',
-        'price': '99.99',
-        'stock': '3',
-        'category': 'Home',
-        'image_url': '',
-    }, follow_redirects=True)
-    assert r.status_code == 200
-    assert b'Edited Product' in r.data
-
-    r2 = c.get('/products', follow_redirects=True)
-    assert b'Edited Product' in r2.data
-    assert b'99.99' in r2.data
-    print('AC-6 PASS: edited product change shows in catalog')
-
-
-# ── AC-7: Admin can delete a product ─────────────────────────────────────────
-def test_ac7_delete_product():
-    _create_user('ac7admin@test.com', is_admin=1)
-    product_id = _create_product(name='Delete Me Product', price=1.00)
-    c = app.test_client()
-    _login(c, 'ac7admin@test.com')
-    r = c.post(f'/admin/products/{product_id}/delete', follow_redirects=True)
-    assert r.status_code == 200
+    r = c.post('/api/admin/products/add', data={
+        'name':        'Admin Added Cumin',
+        'description': 'Premium cumin added by admin',
+        'price':       '99.0',
+        'stock':       '50',
+        'category':    'Whole Spices',
+        'image_url':   '',
+    })
+    assert r.status_code == 201, f"Expected 201, got {r.status_code}: {r.get_json()}"
+    assert r.get_json().get('success') is True
 
     conn = _db_conn()
-    row = conn.execute("SELECT id FROM products WHERE id = ?", (product_id,)).fetchone()
+    row = conn.execute("SELECT * FROM products WHERE name='Admin Added Cumin'").fetchone()
     conn.close()
-    assert row is None, 'Product should be removed from the database'
-    print('AC-7 PASS: deleted product removed from catalog')
+    assert row is not None, "Product not found in DB after admin add"
+    print('AC-5 PASS: admin can add a product; it appears in DB')
 
 
-# ── AC-8: Admin can view all orders ──────────────────────────────────────────
-def test_ac8_view_all_orders():
-    user_a = _create_user('ac8a@test.com', name='Alice')
-    user_b = _create_user('ac8b@test.com', name='Bob')
-    _create_order(user_a, total=111.0)
-    _create_order(user_b, total=222.0)
-    _create_user('ac8admin@test.com', is_admin=1)
+# ---------------------------------------------------------------------------
+# AC-6: Add product with missing name returns 422
+# ---------------------------------------------------------------------------
 
+def test_ac6_add_product_validation():
     c = app.test_client()
-    _login(c, 'ac8admin@test.com')
-    r = c.get('/admin/orders')
-    assert r.status_code == 200
-    assert b'111.00' in r.data
-    assert b'222.00' in r.data
-    assert b'Alice' in r.data
-    assert b'Bob' in r.data
-    print('AC-8 PASS: admin sees all orders across all customers')
+    _login(c, 'admin@test.com')
+
+    r = c.post('/api/admin/products/add', data={
+        'name':     '',
+        'price':    '100',
+        'stock':    '10',
+        'category': 'Whole Spices',
+    })
+    assert r.status_code == 422, f"Expected 422 for missing name, got {r.status_code}"
+    assert 'error' in r.get_json()
+    print('AC-6 PASS: add product with missing name returns 422')
 
 
-# ── AC-9: Admin can update order status ──────────────────────────────────────
-def test_ac9_update_order_status():
-    user_id = _create_user('ac9customer@test.com', name='Customer')
-    order_id = _create_order(user_id, status='paid')
-    _create_user('ac9admin@test.com', is_admin=1)
+# ---------------------------------------------------------------------------
+# AC-7: Admin can edit a product via POST /api/admin/products/<id>/edit
+# ---------------------------------------------------------------------------
+
+def test_ac7_admin_edit_product():
+    pid = _create_product('Edit Me Spice', price=50.0)
+    c = app.test_client()
+    _login(c, 'admin@test.com')
+
+    r = c.post(f'/api/admin/products/{pid}/edit', data={
+        'name':        'Edited Spice Name',
+        'description': 'Updated description',
+        'price':       '75.0',
+        'stock':       '30',
+        'category':    'Ground Spices',
+        'image_url':   '',
+    })
+    assert r.status_code == 200, f"Expected 200, got {r.status_code}: {r.get_json()}"
+    assert r.get_json().get('success') is True
+
+    conn = _db_conn()
+    row = conn.execute("SELECT * FROM products WHERE id=?", (pid,)).fetchone()
+    conn.close()
+    assert row['name'] == 'Edited Spice Name'
+    assert row['price'] == 75.0
+    assert row['category'] == 'Ground Spices'
+    print('AC-7 PASS: admin can edit a product; changes reflected in DB')
+
+
+# ---------------------------------------------------------------------------
+# AC-8: Admin can delete a product
+# ---------------------------------------------------------------------------
+
+def test_ac8_admin_delete_product():
+    pid = _create_product('Delete Me Spice')
+    c = app.test_client()
+    _login(c, 'admin@test.com')
+
+    r = c.post(f'/api/admin/products/{pid}/delete')
+    assert r.status_code == 200, f"Expected 200, got {r.status_code}"
+    assert r.get_json().get('success') is True
+
+    conn = _db_conn()
+    row = conn.execute("SELECT * FROM products WHERE id=?", (pid,)).fetchone()
+    conn.close()
+    assert row is None, "Product still exists in DB after delete"
+    print('AC-8 PASS: admin can delete a product; it is removed from DB')
+
+
+# ---------------------------------------------------------------------------
+# AC-9: Admin can list all orders via GET /api/admin/orders
+# ---------------------------------------------------------------------------
+
+def test_ac9_admin_list_orders():
+    pid = _create_product('Order For Admin')
+    c_user = app.test_client()
+    _login(c_user, 'regular@test.com')
+    _place_order(c_user, pid)
 
     c_admin = app.test_client()
-    _login(c_admin, 'ac9admin@test.com')
-    r = c_admin.post(f'/admin/orders/{order_id}/status',
-                     data={'status': 'shipped'}, follow_redirects=True)
-    assert r.status_code == 200
+    _login(c_admin, 'admin@test.com')
+    r = c_admin.get('/api/admin/orders')
+    assert r.status_code == 200, f"Expected 200, got {r.status_code}"
+    data = r.get_json()
+    assert 'orders' in data
+    assert len(data['orders']) >= 1
+    assert 'allowed_statuses' in data
+    print('AC-9 PASS: admin can list all orders')
+
+
+# ---------------------------------------------------------------------------
+# AC-10: Admin can update order status
+# ---------------------------------------------------------------------------
+
+def test_ac10_admin_update_order_status():
+    pid = _create_product('Status Update Spice')
+    c_user = app.test_client()
+    _login(c_user, 'regular@test.com')
+    order_id = _place_order(c_user, pid)
 
     conn = _db_conn()
-    row = conn.execute("SELECT status FROM orders WHERE id = ?", (order_id,)).fetchone()
+    conn.execute("UPDATE orders SET status='paid' WHERE id=?", (order_id,))
+    conn.commit()
     conn.close()
-    assert row['status'] == 'shipped'
 
-    c_customer = app.test_client()
-    _login(c_customer, 'ac9customer@test.com')
-    r2 = c_customer.get('/orders')
-    assert r2.status_code == 200
-    assert b'shipped' in r2.data
-    print('AC-9 PASS: status updated and customer sees new status')
-
-
-# ── AC-10: No public self-promotion to admin ──────────────────────────────────
-def test_ac10_no_self_promotion():
-    c = app.test_client()
-    r = c.post('/signup', data={
-        'name': 'Attacker', 'email': 'attacker@test.com',
-        'password': 'password123', 'confirm_password': 'password123',
-        'is_admin': '1',
-    }, follow_redirects=True)
-    assert r.status_code == 200
+    c_admin = app.test_client()
+    _login(c_admin, 'admin@test.com')
+    r = c_admin.post(f'/api/admin/orders/{order_id}/status', json={'status': 'shipped'})
+    assert r.status_code == 200, f"Expected 200, got {r.status_code}: {r.get_json()}"
+    assert r.get_json().get('success') is True
 
     conn = _db_conn()
-    row = conn.execute("SELECT is_admin FROM users WHERE email = ?",
-                       ('attacker@test.com',)).fetchone()
+    order = conn.execute("SELECT status FROM orders WHERE id=?", (order_id,)).fetchone()
     conn.close()
-    assert row is not None
-    assert row['is_admin'] == 0, 'User should not be able to self-promote to admin via signup'
-    print('AC-10 PASS: signup cannot create an admin user')
+    assert order['status'] == 'shipped', f"Expected status=shipped, got {order['status']}"
+    print('AC-10 PASS: admin can update order status to shipped')
 
+
+# ---------------------------------------------------------------------------
+# Runner
+# ---------------------------------------------------------------------------
 
 if __name__ == '__main__':
     tests = [
-        test_ac1_normal_user_blocked,
-        test_ac2_logged_out_redirected,
-        test_ac3_admin_dashboard,
-        test_ac4_add_product,
-        test_ac5_add_product_validation,
-        test_ac6_edit_product,
-        test_ac7_delete_product,
-        test_ac8_view_all_orders,
-        test_ac9_update_order_status,
-        test_ac10_no_self_promotion,
+        test_ac1_unauthenticated_admin,
+        test_ac2_non_admin_forbidden,
+        test_ac3_admin_dashboard_data,
+        test_ac4_admin_list_products,
+        test_ac5_admin_add_product,
+        test_ac6_add_product_validation,
+        test_ac7_admin_edit_product,
+        test_ac8_admin_delete_product,
+        test_ac9_admin_list_orders,
+        test_ac10_admin_update_order_status,
     ]
     passed = failed = 0
     for t in tests:

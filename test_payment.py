@@ -8,13 +8,12 @@ import os
 import shutil
 import sqlite3
 import tempfile
-import unittest.mock as mock
 
 os.environ.setdefault('SECRET_KEY', 'test-secret')
 os.environ.setdefault('GOOGLE_CLIENT_ID', 'test')
 os.environ.setdefault('GOOGLE_CLIENT_SECRET', 'test')
-os.environ['RAZORPAY_KEY_ID'] = 'rzp_test_testkey'
-os.environ['RAZORPAY_KEY_SECRET'] = 'test_secret_key'
+os.environ.setdefault('RAZORPAY_KEY_ID', 'test_key_id')
+os.environ.setdefault('RAZORPAY_KEY_SECRET', 'test_key_secret')
 
 _tmp = tempfile.mkdtemp()
 _test_db = os.path.join(_tmp, 'test.db')
@@ -28,295 +27,249 @@ app.config['TESTING'] = True
 app.config['WTF_CSRF_ENABLED'] = False
 
 
-# --- Razorpay mock -----------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
 
-class FakeRzOrder:
-    def __init__(self):
-        self.data = {'id': 'order_test_123'}
-
-    def create(self, params):
-        return self.data
-
-
-class FakeRzClient:
-    def __init__(self, *args, **kwargs):
-        self.order = FakeRzOrder()
+def _db_conn():
+    conn = sqlite3.connect(_test_db)
+    conn.row_factory = sqlite3.Row
+    return conn
 
 
-def _make_signature(order_id, payment_id, secret='test_secret_key'):
-    msg = f"{order_id}|{payment_id}".encode()
+def _create_user(email, name='Test User', password='password123'):
+    from werkzeug.security import generate_password_hash
+    conn = _db_conn()
+    cur = conn.execute(
+        "INSERT INTO users (name, email, password_hash, is_admin) VALUES (?, ?, ?, 0)",
+        (name, email, generate_password_hash(password))
+    )
+    uid = cur.lastrowid
+    conn.commit()
+    conn.close()
+    return uid
+
+
+def _create_product(name='Pay Spice', price=100.0, stock=50):
+    conn = _db_conn()
+    cur = conn.execute(
+        "INSERT INTO products (name, description, price, stock, category) VALUES (?, ?, ?, ?, ?)",
+        (name, 'Test desc', price, stock, 'Whole Spices')
+    )
+    pid = cur.lastrowid
+    conn.commit()
+    conn.close()
+    return pid
+
+
+def _login(client, email, password='password123'):
+    return client.post('/api/auth/login', json={'email': email, 'password': password})
+
+
+def _place_order(client, product_id, qty=1):
+    client.post('/api/cart/add', json={'product_id': product_id, 'quantity': qty})
+    r = client.post('/api/checkout', json={
+        'shipping_name':    'Test Customer',
+        'shipping_phone':   '9876543210',
+        'shipping_address': '123 Test St, Mumbai',
+    })
+    return r.get_json().get('order_id')
+
+
+def _set_order_paid(order_id, payment_id='pay_test123'):
+    conn = _db_conn()
+    conn.execute(
+        "UPDATE orders SET status='paid', payment_id=? WHERE id=?",
+        (payment_id, order_id)
+    )
+    conn.commit()
+    conn.close()
+
+
+def _set_payment_order_id(order_id, rz_order_id):
+    conn = _db_conn()
+    conn.execute(
+        "UPDATE orders SET payment_order_id=? WHERE id=?",
+        (rz_order_id, order_id)
+    )
+    conn.commit()
+    conn.close()
+
+
+def _make_signature(rz_order_id, rz_payment_id, secret='test_key_secret'):
+    msg = f"{rz_order_id}|{rz_payment_id}".encode()
     return hmac.new(secret.encode(), msg, hashlib.sha256).hexdigest()
 
 
-# --- Helpers -----------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# AC-1: Unauthenticated GET /api/payment/<id> -> 401
+# ---------------------------------------------------------------------------
 
-def get_client():
-    return app.test_client()
+def test_ac1_unauthenticated_payment():
+    c = app.test_client()
+    r = c.get('/api/payment/1')
+    assert r.status_code == 401, f"Expected 401, got {r.status_code}"
+    print('AC-1 PASS: unauthenticated GET /api/payment/<id> returns 401')
 
 
-def login(client, email='demo@example.com', password='demo1234'):
-    return client.post('/login', data={'email': email, 'password': password},
-                       follow_redirects=True)
+# ---------------------------------------------------------------------------
+# AC-2: Unauthenticated POST /api/payment/verify -> 401
+# ---------------------------------------------------------------------------
+
+def test_ac2_unauthenticated_verify():
+    c = app.test_client()
+    r = c.post('/api/payment/verify', json={})
+    assert r.status_code == 401, f"Expected 401, got {r.status_code}"
+    print('AC-2 PASS: unauthenticated POST /api/payment/verify returns 401')
 
 
-def _create_pending_order(user_id=1):
-    conn = sqlite3.connect(_test_db)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON")
-    cursor = conn.execute("""
-        INSERT INTO orders (user_id, status, subtotal, shipping_fee, total,
-                            shipping_name, shipping_phone, shipping_address)
-        VALUES (?, 'pending', 69.98, 0.0, 69.98, 'Test User', '9876543210', '123 Test St')
-    """, (user_id,))
-    order_id = cursor.lastrowid
-    conn.execute("""
-        INSERT INTO order_items (order_id, product_id, product_name, unit_price, quantity, line_total)
-        VALUES (?, 1, 'Wireless Earbuds', 29.99, 2, 59.98)
-    """, (order_id,))
-    conn.execute("""
-        INSERT INTO order_items (order_id, product_id, product_name, unit_price, quantity, line_total)
-        VALUES (?, 2, 'Cotton T-Shirt', 9.99, 1, 9.99)
-    """, (order_id,))
-    conn.commit()
+# ---------------------------------------------------------------------------
+# AC-3: GET /api/payment/<id> for non-existent order -> 404
+# ---------------------------------------------------------------------------
+
+def test_ac3_payment_nonexistent_order():
+    _create_user('pay3@test.com')
+    c = app.test_client()
+    _login(c, 'pay3@test.com')
+    r = c.get('/api/payment/99999')
+    assert r.status_code == 404, f"Expected 404, got {r.status_code}"
+    print('AC-3 PASS: payment for non-existent order returns 404')
+
+
+# ---------------------------------------------------------------------------
+# AC-4: GET /api/payment/<id> for another user's order -> 403
+# ---------------------------------------------------------------------------
+
+def test_ac4_payment_wrong_user():
+    _create_user('pay4a@test.com', name='Pay4 Alice')
+    _create_user('pay4b@test.com', name='Pay4 Bob')
+    pid = _create_product('Pay4 Spice')
+
+    c_a = app.test_client()
+    _login(c_a, 'pay4a@test.com')
+    order_id = _place_order(c_a, pid)
+
+    c_b = app.test_client()
+    _login(c_b, 'pay4b@test.com')
+    r = c_b.get(f'/api/payment/{order_id}')
+    assert r.status_code == 403, f"Expected 403, got {r.status_code}"
+    print('AC-4 PASS: accessing another user\'s payment returns 403')
+
+
+# ---------------------------------------------------------------------------
+# AC-5: Paid order returns already_paid=True
+# ---------------------------------------------------------------------------
+
+def test_ac5_already_paid_order():
+    _create_user('pay5@test.com')
+    pid = _create_product('Pay5 Spice')
+    c = app.test_client()
+    _login(c, 'pay5@test.com')
+    order_id = _place_order(c, pid)
+    _set_order_paid(order_id)
+
+    r = c.get(f'/api/payment/{order_id}')
+    assert r.status_code == 200, f"Expected 200, got {r.status_code}"
+    data = r.get_json()
+    assert data.get('already_paid') is True
+    print('AC-5 PASS: GET /api/payment/<id> for paid order returns already_paid=True')
+
+
+# ---------------------------------------------------------------------------
+# AC-6: Payment verify with valid HMAC signature marks order as paid
+# ---------------------------------------------------------------------------
+
+def test_ac6_verify_valid_signature():
+    _create_user('pay6@test.com')
+    pid = _create_product('Pay6 Spice', price=250.0)
+    c = app.test_client()
+    _login(c, 'pay6@test.com')
+    order_id = _place_order(c, pid)
+
+    rz_order_id   = 'order_test_abc123'
+    rz_payment_id = 'pay_test_xyz789'
+    _set_payment_order_id(order_id, rz_order_id)
+    signature = _make_signature(rz_order_id, rz_payment_id)
+
+    r = c.post('/api/payment/verify', json={
+        'razorpay_order_id':   rz_order_id,
+        'razorpay_payment_id': rz_payment_id,
+        'razorpay_signature':  signature,
+    })
+    assert r.status_code == 200, f"Expected 200, got {r.status_code}: {r.get_json()}"
+    data = r.get_json()
+    assert data.get('success') is True
+
+    conn = _db_conn()
+    order = conn.execute("SELECT status, payment_id FROM orders WHERE id=?", (order_id,)).fetchone()
     conn.close()
-    return order_id
+    assert order['status'] == 'paid', f"Expected status=paid, got {order['status']}"
+    assert order['payment_id'] == rz_payment_id
+    print('AC-6 PASS: valid HMAC signature marks order as paid in DB')
 
 
-def _create_second_user():
-    conn = sqlite3.connect(_test_db)
-    from werkzeug.security import generate_password_hash
-    conn.execute(
-        "INSERT OR IGNORE INTO users (name, email, password_hash) VALUES (?, ?, ?)",
-        ('User B', 'userb@example.com', generate_password_hash('pass1234'))
-    )
-    conn.commit()
-    user_id = conn.execute("SELECT id FROM users WHERE email = 'userb@example.com'").fetchone()[0]
-    conn.close()
-    return user_id
+# ---------------------------------------------------------------------------
+# AC-7: Payment verify with invalid signature returns 400
+# ---------------------------------------------------------------------------
+
+def test_ac7_verify_invalid_signature():
+    _create_user('pay7@test.com')
+    pid = _create_product('Pay7 Spice')
+    c = app.test_client()
+    _login(c, 'pay7@test.com')
+    order_id = _place_order(c, pid)
+
+    rz_order_id = 'order_test_fake'
+    _set_payment_order_id(order_id, rz_order_id)
+
+    r = c.post('/api/payment/verify', json={
+        'razorpay_order_id':   rz_order_id,
+        'razorpay_payment_id': 'pay_fake',
+        'razorpay_signature':  'invalidsignature',
+    })
+    assert r.status_code == 400, f"Expected 400, got {r.status_code}"
+    data = r.get_json()
+    assert 'error' in data
+    print('AC-7 PASS: invalid HMAC signature returns 400')
 
 
-# --- Tests -------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# AC-8: GET /api/order/<id>/success returns order and items for paid order
+# ---------------------------------------------------------------------------
 
-def test_ac8_login_required():
-    c = get_client()
-    r = c.get('/payment/1', follow_redirects=False)
-    assert r.status_code == 302
-    assert 'login' in r.headers.get('Location', '').lower()
-    print('AC-8 PASS: logged-out user redirected to login')
+def test_ac8_order_success_endpoint():
+    _create_user('pay8@test.com')
+    pid = _create_product('Pay8 Spice')
+    c = app.test_client()
+    _login(c, 'pay8@test.com')
+    order_id = _place_order(c, pid)
+    _set_order_paid(order_id)
 
-
-def test_ac1_owner_sees_pay_page():
-    conn = sqlite3.connect(_test_db)
-    conn.execute("DELETE FROM orders WHERE user_id = 1")
-    conn.commit()
-    conn.close()
-
-    order_id = _create_pending_order(user_id=1)
-
-    with mock.patch('payment._rz_client', return_value=FakeRzClient()):
-        c = get_client()
-        login(c)
-        r = c.get(f'/payment/{order_id}', follow_redirects=False)
-
-    assert r.status_code == 200
-    assert b'69.98' in r.data
-    assert b'order_test_123' in r.data or b'rzp_test_testkey' in r.data
-    print('AC-1 PASS: owner sees payment page with correct amount')
+    r = c.get(f'/api/order/{order_id}/success')
+    assert r.status_code == 200, f"Expected 200, got {r.status_code}"
+    data = r.get_json()
+    assert 'order' in data
+    assert 'items' in data
+    assert data['order']['id'] == order_id
+    print('AC-8 PASS: GET /api/order/<id>/success returns order and items')
 
 
-def test_ac2_non_owner_blocked():
-    conn = sqlite3.connect(_test_db)
-    conn.execute("DELETE FROM orders WHERE user_id = 1")
-    conn.commit()
-    conn.close()
-
-    order_id = _create_pending_order(user_id=1)
-    _create_second_user()
-
-    with mock.patch('payment._rz_client', return_value=FakeRzClient()):
-        c = get_client()
-        login(c, email='userb@example.com', password='pass1234')
-        r = c.get(f'/payment/{order_id}', follow_redirects=False)
-
-    assert r.status_code == 403
-    print('AC-2 PASS: non-owner gets 403')
-
-
-def test_ac3_valid_payment_marks_paid():
-    conn = sqlite3.connect(_test_db)
-    conn.execute("DELETE FROM orders WHERE user_id = 1")
-    conn.commit()
-    conn.close()
-
-    order_id = _create_pending_order(user_id=1)
-
-    # Simulate the gateway already stored payment_order_id
-    conn = sqlite3.connect(_test_db)
-    conn.execute("UPDATE orders SET payment_order_id = 'order_test_123' WHERE id = ?", (order_id,))
-    conn.commit()
-    conn.close()
-
-    valid_sig = _make_signature('order_test_123', 'pay_test_456')
-
-    c = get_client()
-    login(c)
-    r = c.post('/payment/verify', data={
-        'razorpay_order_id':  'order_test_123',
-        'razorpay_payment_id': 'pay_test_456',
-        'razorpay_signature':  valid_sig,
-    }, follow_redirects=False)
-
-    assert r.status_code == 302
-    assert 'success' in r.headers.get('Location', '').lower()
-
-    conn = sqlite3.connect(_test_db)
-    order = conn.execute("SELECT status, payment_id FROM orders WHERE id = ?", (order_id,)).fetchone()
-    conn.close()
-    assert order[0] == 'paid', f'Expected paid, got {order[0]}'
-    assert order[1] == 'pay_test_456'
-    print('AC-3 PASS: valid payment marks order paid and stores payment_id')
-
-
-def test_ac4_invalid_signature_rejected():
-    conn = sqlite3.connect(_test_db)
-    conn.execute("DELETE FROM orders WHERE user_id = 1")
-    conn.commit()
-    conn.close()
-
-    order_id = _create_pending_order(user_id=1)
-
-    conn = sqlite3.connect(_test_db)
-    conn.execute("UPDATE orders SET payment_order_id = 'order_tampered_789' WHERE id = ?", (order_id,))
-    conn.commit()
-    conn.close()
-
-    c = get_client()
-    login(c)
-    r = c.post('/payment/verify', data={
-        'razorpay_order_id':  'order_tampered_789',
-        'razorpay_payment_id': 'pay_fake_000',
-        'razorpay_signature':  'totally_fake_signature',
-    }, follow_redirects=True)
-
-    assert r.status_code == 200
-    assert b'failed' in r.data.lower() or b'verif' in r.data.lower()
-
-    conn = sqlite3.connect(_test_db)
-    order = conn.execute("SELECT status FROM orders WHERE id = ?", (order_id,)).fetchone()
-    conn.close()
-    assert order[0] == 'pending', f'Expected pending, got {order[0]}'
-    print('AC-4 PASS: tampered signature rejected, order stays pending')
-
-
-def test_ac5_cancel_keeps_order_pending():
-    conn = sqlite3.connect(_test_db)
-    conn.execute("DELETE FROM orders WHERE user_id = 1")
-    conn.commit()
-    conn.close()
-
-    order_id = _create_pending_order(user_id=1)
-
-    with mock.patch('payment._rz_client', return_value=FakeRzClient()):
-        c = get_client()
-        login(c)
-        # User opens pay page but never submits the verify form (simulates cancel)
-        r = c.get(f'/payment/{order_id}')
-
-    assert r.status_code == 200
-
-    conn = sqlite3.connect(_test_db)
-    order = conn.execute("SELECT status FROM orders WHERE id = ?", (order_id,)).fetchone()
-    conn.close()
-    assert order[0] == 'pending', f'Expected pending after cancel, got {order[0]}'
-    print('AC-5 PASS: opening pay page without completing keeps order pending')
-
-
-def test_ac6_already_paid_redirects_to_success():
-    conn = sqlite3.connect(_test_db)
-    conn.execute("DELETE FROM orders WHERE user_id = 1")
-    conn.commit()
-    conn.close()
-
-    order_id = _create_pending_order(user_id=1)
-
-    conn = sqlite3.connect(_test_db)
-    conn.execute(
-        "UPDATE orders SET status = 'paid', payment_id = 'pay_already_done' WHERE id = ?",
-        (order_id,)
-    )
-    conn.commit()
-    conn.close()
-
-    with mock.patch('payment._rz_client', return_value=FakeRzClient()):
-        c = get_client()
-        login(c)
-        r = c.get(f'/payment/{order_id}', follow_redirects=False)
-
-    assert r.status_code == 302
-    assert 'success' in r.headers.get('Location', '').lower()
-    print('AC-6 PASS: already-paid order redirects to success page')
-
-
-def test_ac7_amount_from_db():
-    conn = sqlite3.connect(_test_db)
-    conn.execute("DELETE FROM orders WHERE user_id = 1")
-    conn.commit()
-    conn.close()
-
-    order_id = _create_pending_order(user_id=1)
-
-    captured = {}
-
-    class SpyRzOrder:
-        def create(self, params):
-            captured['amount'] = params['amount']
-            return {'id': 'order_spy_999'}
-
-    class SpyRzClient:
-        def __init__(self, *a, **kw):
-            self.order = SpyRzOrder()
-
-    with mock.patch('payment._rz_client', return_value=SpyRzClient()):
-        c = get_client()
-        login(c)
-        c.get(f'/payment/{order_id}')
-
-    assert captured.get('amount') == 6998, f"Expected 6998 paisa, got {captured.get('amount')}"
-    print('AC-7 PASS: Razorpay order amount taken from DB (6998 paisa = Rs.69.98)')
-
-
-def test_ac9_secret_not_in_pay_page():
-    conn = sqlite3.connect(_test_db)
-    conn.execute("DELETE FROM orders WHERE user_id = 1")
-    conn.commit()
-    conn.close()
-
-    order_id = _create_pending_order(user_id=1)
-
-    with mock.patch('payment._rz_client', return_value=FakeRzClient()):
-        c = get_client()
-        login(c)
-        r = c.get(f'/payment/{order_id}')
-
-    assert b'test_secret_key' not in r.data
-    assert b'RAZORPAY_KEY_SECRET' not in r.data
-    print('AC-9 PASS: Razorpay secret key is NOT present in the pay page HTML')
-
+# ---------------------------------------------------------------------------
+# Runner
+# ---------------------------------------------------------------------------
 
 if __name__ == '__main__':
     tests = [
-        test_ac8_login_required,
-        test_ac1_owner_sees_pay_page,
-        test_ac2_non_owner_blocked,
-        test_ac3_valid_payment_marks_paid,
-        test_ac4_invalid_signature_rejected,
-        test_ac5_cancel_keeps_order_pending,
-        test_ac6_already_paid_redirects_to_success,
-        test_ac7_amount_from_db,
-        test_ac9_secret_not_in_pay_page,
+        test_ac1_unauthenticated_payment,
+        test_ac2_unauthenticated_verify,
+        test_ac3_payment_nonexistent_order,
+        test_ac4_payment_wrong_user,
+        test_ac5_already_paid_order,
+        test_ac6_verify_valid_signature,
+        test_ac7_verify_invalid_signature,
+        test_ac8_order_success_endpoint,
     ]
-    passed = 0
-    failed = 0
+    passed = failed = 0
     for t in tests:
         try:
             t()

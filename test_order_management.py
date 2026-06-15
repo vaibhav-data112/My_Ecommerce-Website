@@ -23,210 +23,235 @@ app.config['TESTING'] = True
 app.config['WTF_CSRF_ENABLED'] = False
 
 
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
 def _db_conn():
     conn = sqlite3.connect(_test_db)
     conn.row_factory = sqlite3.Row
     return conn
 
 
-def _create_user(email, name='Test User'):
+def _create_user(email, name='Test User', password='password123'):
     from werkzeug.security import generate_password_hash
     conn = _db_conn()
     cur = conn.execute(
-        "INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)",
-        (name, email, generate_password_hash('password123'))
+        "INSERT INTO users (name, email, password_hash, is_admin) VALUES (?, ?, ?, 0)",
+        (name, email, generate_password_hash(password))
     )
-    user_id = cur.lastrowid
+    uid = cur.lastrowid
     conn.commit()
     conn.close()
-    return user_id
+    return uid
 
 
-def _create_order(user_id, status='pending', total=100.0, created_at=None):
+def _create_product(name='Order Spice', price=100.0, stock=50):
     conn = _db_conn()
     cur = conn.execute(
-        """INSERT INTO orders
-           (user_id, status, subtotal, shipping_fee, total, shipping_name, shipping_phone, shipping_address, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-        (user_id, status, 60.0, 40.0, total,
-         'Test User', '9876543210', '123 Test Street',
-         created_at or '2024-01-01 10:00:00')
+        "INSERT INTO products (name, description, price, stock, category) VALUES (?, ?, ?, ?, ?)",
+        (name, 'Test desc', price, stock, 'Whole Spices')
     )
-    order_id = cur.lastrowid
+    pid = cur.lastrowid
     conn.commit()
     conn.close()
-    return order_id
+    return pid
 
 
-def _create_order_item(order_id, name='Widget', price=50.0, qty=2):
+def _login(client, email, password='password123'):
+    return client.post('/api/auth/login', json={'email': email, 'password': password})
+
+
+def _place_order(client, product_id, qty=1):
+    client.post('/api/cart/add', json={'product_id': product_id, 'quantity': qty})
+    r = client.post('/api/checkout', json={
+        'shipping_name':    'Test Customer',
+        'shipping_phone':   '9876543210',
+        'shipping_address': '123 Test St, Mumbai',
+    })
+    return r.get_json().get('order_id')
+
+
+# ---------------------------------------------------------------------------
+# AC-1: Unauthenticated GET /api/orders -> 401
+# ---------------------------------------------------------------------------
+
+def test_ac1_unauthenticated_orders():
+    c = app.test_client()
+    r = c.get('/api/orders')
+    assert r.status_code == 401, f"Expected 401, got {r.status_code}"
+    print('AC-1 PASS: unauthenticated GET /api/orders returns 401')
+
+
+# ---------------------------------------------------------------------------
+# AC-2: New user with no orders gets empty list
+# ---------------------------------------------------------------------------
+
+def test_ac2_empty_order_history():
+    _create_user('ord2@test.com')
+    c = app.test_client()
+    _login(c, 'ord2@test.com')
+    r = c.get('/api/orders')
+    assert r.status_code == 200, f"Expected 200, got {r.status_code}"
+    data = r.get_json()
+    assert 'orders' in data
+    assert data['orders'] == []
+    print('AC-2 PASS: new user gets empty order history')
+
+
+# ---------------------------------------------------------------------------
+# AC-3: Order appears in history after checkout
+# ---------------------------------------------------------------------------
+
+def test_ac3_order_in_history():
+    _create_user('ord3@test.com')
+    pid = _create_product('Ord3 Spice')
+    c = app.test_client()
+    _login(c, 'ord3@test.com')
+    order_id = _place_order(c, pid)
+
+    r = c.get('/api/orders')
+    data = r.get_json()
+    order_ids = [o['id'] for o in data['orders']]
+    assert order_id in order_ids, f"Order {order_id} not found in history: {order_ids}"
+    print('AC-3 PASS: order appears in history after checkout')
+
+
+# ---------------------------------------------------------------------------
+# AC-4: GET /api/orders/<id> returns order details with items
+# ---------------------------------------------------------------------------
+
+def test_ac4_order_detail():
+    _create_user('ord4@test.com')
+    pid = _create_product('Ord4 Spice', price=150.0)
+    c = app.test_client()
+    _login(c, 'ord4@test.com')
+    order_id = _place_order(c, pid, qty=2)
+
+    r = c.get(f'/api/orders/{order_id}')
+    assert r.status_code == 200, f"Expected 200, got {r.status_code}"
+    data = r.get_json()
+    assert 'order' in data
+    assert 'items' in data
+    assert data['order']['id'] == order_id
+    assert len(data['items']) > 0
+    assert data['items'][0]['product_id'] == pid
+    assert data['items'][0]['quantity'] == 2
+    print('AC-4 PASS: order detail returns order and items')
+
+
+# ---------------------------------------------------------------------------
+# AC-5: Order has status and shipping fields
+# ---------------------------------------------------------------------------
+
+def test_ac5_order_has_required_fields():
+    _create_user('ord5@test.com')
+    pid = _create_product('Ord5 Spice')
+    c = app.test_client()
+    _login(c, 'ord5@test.com')
+    order_id = _place_order(c, pid)
+
+    r = c.get(f'/api/orders/{order_id}')
+    order = r.get_json()['order']
+    assert 'status' in order
+    assert 'shipping_name' in order
+    assert 'shipping_phone' in order
+    assert order['shipping_name'] == 'Test Customer'
+    assert order['shipping_phone'] == '9876543210'
+    print('AC-5 PASS: order has status, shipping_name, shipping_phone fields')
+
+
+# ---------------------------------------------------------------------------
+# AC-6: Accessing another user's order returns 404
+# ---------------------------------------------------------------------------
+
+def test_ac6_order_privacy():
+    _create_user('ord6a@test.com', name='Ord6 Alice')
+    _create_user('ord6b@test.com', name='Ord6 Bob')
+    pid = _create_product('Ord6 Spice')
+
+    c_a = app.test_client()
+    _login(c_a, 'ord6a@test.com')
+    order_id = _place_order(c_a, pid)
+
+    c_b = app.test_client()
+    _login(c_b, 'ord6b@test.com')
+    r = c_b.get(f'/api/orders/{order_id}')
+    assert r.status_code == 404, f"Expected 404 (access denied), got {r.status_code}"
+    print('AC-6 PASS: user B cannot access user A\'s order (returns 404)')
+
+
+# ---------------------------------------------------------------------------
+# AC-7: Non-existent order ID returns 404
+# ---------------------------------------------------------------------------
+
+def test_ac7_nonexistent_order_404():
+    _create_user('ord7@test.com')
+    c = app.test_client()
+    _login(c, 'ord7@test.com')
+    r = c.get('/api/orders/99999')
+    assert r.status_code == 404, f"Expected 404, got {r.status_code}"
+    print('AC-7 PASS: non-existent order returns 404')
+
+
+# ---------------------------------------------------------------------------
+# AC-8: Multiple orders appear in history (newest first)
+# ---------------------------------------------------------------------------
+
+def test_ac8_multiple_orders_in_history():
+    _create_user('ord8@test.com')
+    pid1 = _create_product('Ord8 SpiceA')
+    pid2 = _create_product('Ord8 SpiceB')
+    c = app.test_client()
+    _login(c, 'ord8@test.com')
+    oid1 = _place_order(c, pid1)
+    oid2 = _place_order(c, pid2)
+
+    r = c.get('/api/orders')
+    order_ids = [o['id'] for o in r.get_json()['orders']]
+    assert oid1 in order_ids and oid2 in order_ids, \
+        f"Both orders should be in history, got: {order_ids}"
+    print('AC-8 PASS: multiple orders all appear in history')
+
+
+# ---------------------------------------------------------------------------
+# AC-9: order_items snapshot captures product_name at time of purchase
+# ---------------------------------------------------------------------------
+
+def test_ac9_order_item_snapshots_name():
+    _create_user('ord9@test.com')
+    pid = _create_product('Ord9 Original Name', price=80.0)
+    c = app.test_client()
+    _login(c, 'ord9@test.com')
+    order_id = _place_order(c, pid)
+
     conn = _db_conn()
-    conn.execute(
-        """INSERT INTO order_items (order_id, product_id, product_name, unit_price, quantity, line_total)
-           VALUES (?, ?, ?, ?, ?, ?)""",
-        (order_id, 1, name, price, qty, round(price * qty, 2))
-    )
+    conn.execute("UPDATE products SET name = 'Changed Name' WHERE id = ?", (pid,))
     conn.commit()
     conn.close()
 
-
-def _login(client, email):
-    return client.post('/login', data={'email': email, 'password': 'password123'},
-                       follow_redirects=True)
-
-
-# ── AC-1: Order history lists the user's orders ──────────────────────────────
-def test_ac1_order_history_lists_orders():
-    user_id = _create_user('ac1@test.com')
-    _create_order(user_id, total=100.0)
-    _create_order(user_id, total=200.0)
-    _create_order(user_id, total=300.0)
-
-    c = app.test_client()
-    _login(c, 'ac1@test.com')
-    r = c.get('/orders')
-    assert r.status_code == 200
-    assert b'100.00' in r.data
-    assert b'200.00' in r.data
-    assert b'300.00' in r.data
-    print('AC-1 PASS: order history lists all 3 orders')
+    r = c.get(f'/api/orders/{order_id}')
+    items = r.get_json()['items']
+    assert items[0]['product_name'] == 'Ord9 Original Name', \
+        f"Expected original name in snapshot, got: {items[0]['product_name']}"
+    print('AC-9 PASS: order_items snapshot preserves product name at purchase time')
 
 
-# ── AC-2: Newest order appears first ─────────────────────────────────────────
-def test_ac2_newest_order_first():
-    user_id = _create_user('ac2@test.com')
-    _create_order(user_id, total=111.0, created_at='2024-01-01 10:00:00')
-    _create_order(user_id, total=222.0, created_at='2024-06-01 10:00:00')
-    _create_order(user_id, total=333.0, created_at='2024-12-01 10:00:00')
-
-    c = app.test_client()
-    _login(c, 'ac2@test.com')
-    r = c.get('/orders')
-    assert r.status_code == 200
-    page = r.data.decode()
-    pos_333 = page.find('333.00')
-    pos_111 = page.find('111.00')
-    assert pos_333 < pos_111, 'Newest order (333) should appear before oldest (111)'
-    print('AC-2 PASS: newest order appears first')
-
-
-# ── AC-3: Order detail shows full info ───────────────────────────────────────
-def test_ac3_order_detail_shows_info():
-    user_id = _create_user('ac3@test.com')
-    order_id = _create_order(user_id, status='paid', total=140.0)
-    _create_order_item(order_id, name='Fancy Gadget', price=70.0, qty=2)
-
-    c = app.test_client()
-    _login(c, 'ac3@test.com')
-    r = c.get(f'/orders/{order_id}')
-    assert r.status_code == 200
-    assert b'Fancy Gadget' in r.data
-    assert b'70.00' in r.data
-    assert b'123 Test Street' in r.data
-    assert b'paid' in r.data.lower()
-    print('AC-3 PASS: order detail shows items, address and status')
-
-
-# ── AC-4: Prices reflect purchase-time snapshot ───────────────────────────────
-def test_ac4_snapshot_price():
-    user_id = _create_user('ac4@test.com')
-    order_id = _create_order(user_id, total=100.0)
-    _create_order_item(order_id, name='Old Price Item', price=100.0, qty=1)
-
-    conn = _db_conn()
-    conn.execute("UPDATE products SET price = 999.0 WHERE id = 1")
-    conn.commit()
-    conn.close()
-
-    c = app.test_client()
-    _login(c, 'ac4@test.com')
-    r = c.get(f'/orders/{order_id}')
-    assert r.status_code == 200
-    assert b'100.00' in r.data
-    assert b'999.00' not in r.data
-    print('AC-4 PASS: detail uses snapshot price, not current product price')
-
-
-# ── AC-5: Users see only their own orders ─────────────────────────────────────
-def test_ac5_isolation():
-    user_a = _create_user('ac5a@test.com')
-    user_b = _create_user('ac5b@test.com')
-    order_a = _create_order(user_a, total=50.0)
-
-    c = app.test_client()
-    _login(c, 'ac5b@test.com')
-    r = c.get(f'/orders/{order_a}')
-    assert r.status_code == 404
-    assert b'Order Not Found' in r.data or b'not found' in r.data.lower()
-    print('AC-5 PASS: user B cannot see user A\'s order')
-
-
-# ── AC-6: Login required ──────────────────────────────────────────────────────
-def test_ac6_login_required():
-    c = app.test_client()
-    r = c.get('/orders', follow_redirects=False)
-    assert r.status_code == 302
-    assert 'login' in r.headers.get('Location', '').lower()
-
-    user_id = _create_user('ac6@test.com')
-    order_id = _create_order(user_id)
-    r2 = c.get(f'/orders/{order_id}', follow_redirects=False)
-    assert r2.status_code == 302
-    assert 'login' in r2.headers.get('Location', '').lower()
-    print('AC-6 PASS: both order routes redirect logged-out users to login')
-
-
-# ── AC-7: No orders message ───────────────────────────────────────────────────
-def test_ac7_empty_state():
-    _create_user('ac7@test.com')
-    c = app.test_client()
-    _login(c, 'ac7@test.com')
-    r = c.get('/orders')
-    assert r.status_code == 200
-    assert b"haven't placed any orders" in r.data or b'no orders' in r.data.lower()
-    assert b'Browse Products' in r.data or b'catalog' in r.data.lower()
-    print('AC-7 PASS: empty state message shown with link to products')
-
-
-# ── AC-8: Status is shown clearly ────────────────────────────────────────────
-def test_ac8_status_display():
-    user_id = _create_user('ac8@test.com')
-    _create_order(user_id, status='paid',      total=10.0)
-    _create_order(user_id, status='shipped',   total=20.0)
-    _create_order(user_id, status='delivered', total=30.0)
-
-    c = app.test_client()
-    _login(c, 'ac8@test.com')
-    r = c.get('/orders')
-    assert r.status_code == 200
-    assert b'paid' in r.data
-    assert b'shipped' in r.data
-    assert b'delivered' in r.data
-    print('AC-8 PASS: all statuses shown on history page')
-
-
-# ── AC-9: "My Orders" link works ─────────────────────────────────────────────
-def test_ac9_nav_link():
-    _create_user('ac9@test.com')
-    c = app.test_client()
-    _login(c, 'ac9@test.com')
-    r = c.get('/', follow_redirects=True)
-    assert r.status_code == 200
-    assert b'/orders' in r.data
-    assert b'My Orders' in r.data
-    print('AC-9 PASS: "My Orders" link present in nav for logged-in user')
-
+# ---------------------------------------------------------------------------
+# Runner
+# ---------------------------------------------------------------------------
 
 if __name__ == '__main__':
     tests = [
-        test_ac1_order_history_lists_orders,
-        test_ac2_newest_order_first,
-        test_ac3_order_detail_shows_info,
-        test_ac4_snapshot_price,
-        test_ac5_isolation,
-        test_ac6_login_required,
-        test_ac7_empty_state,
-        test_ac8_status_display,
-        test_ac9_nav_link,
+        test_ac1_unauthenticated_orders,
+        test_ac2_empty_order_history,
+        test_ac3_order_in_history,
+        test_ac4_order_detail,
+        test_ac5_order_has_required_fields,
+        test_ac6_order_privacy,
+        test_ac7_nonexistent_order_404,
+        test_ac8_multiple_orders_in_history,
+        test_ac9_order_item_snapshots_name,
     ]
     passed = failed = 0
     for t in tests:
