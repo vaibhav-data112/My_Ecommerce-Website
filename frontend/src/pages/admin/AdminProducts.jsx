@@ -24,7 +24,7 @@ function ProductForm({ title, form, setForm, categories, onSubmit, onCancel, sub
     <div className="card" style={{ padding: 24, marginBottom: 28 }}>
       <h3 style={{ fontFamily: 'var(--font-head)', color: 'var(--color-primary-dark)', marginBottom: 20 }}>{title}</h3>
       <form onSubmit={onSubmit}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+        <div className="form-grid-2">
           <div className="form-group">
             <label className="form-label">Product Name *</label>
             <input className="form-input" required value={form.name}
@@ -177,7 +177,7 @@ export default function AdminProducts() {
     <div className="admin-layout">
       <AdminSidebar active="products" />
       <div className="admin-content">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
           <h2 style={{ fontFamily: 'var(--font-head)', color: 'var(--color-primary-dark)' }}>
             Products <span style={{ fontSize: 16, color: 'var(--color-text-soft)', fontFamily: 'var(--font-body)' }}>({products.length})</span>
           </h2>
@@ -215,6 +215,7 @@ export default function AdminProducts() {
         )}
 
         <div className="card">
+          <div className="table-wrap">
           <table className="data-table">
             <thead>
               <tr>
@@ -264,6 +265,7 @@ export default function AdminProducts() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       </div>
     </div>

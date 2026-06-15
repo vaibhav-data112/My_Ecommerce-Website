@@ -52,7 +52,7 @@ export default function CartPage() {
                     <button className="btn btn-danger btn-sm" onClick={() => removeFromCart(item.product_id)}>Remove</button>
                   </div>
                 </div>
-                <div style={{ fontWeight: 600, color: 'var(--brown)', minWidth: 70, textAlign: 'right' }}>
+                <div style={{ fontWeight: 600, color: 'var(--brown)', textAlign: 'right', flexShrink: 0 }}>
                   ₹{(item.price * item.quantity).toFixed(2)}
                 </div>
               </div>

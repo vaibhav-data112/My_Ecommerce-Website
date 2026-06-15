@@ -39,6 +39,7 @@ export default function AdminOrders() {
         <h2 style={{ fontFamily: 'var(--font-head)', color: 'var(--color-primary-dark)', marginBottom: 24 }}>Orders ({orders.length})</h2>
         {msg && <div className={`alert alert-${msg.type}`}>{msg.text}</div>}
         <div className="card">
+          <div className="table-wrap">
           <table className="data-table">
             <thead>
               <tr>
@@ -68,6 +69,7 @@ export default function AdminOrders() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       </div>
     </div>

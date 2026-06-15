@@ -40,7 +40,7 @@ export default function AdminDashboard() {
             <div className="stat-label">Revenue</div>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 16 }}>
+        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
           <Link to="/admin/products" className="btn btn-primary">Manage Products</Link>
           <Link to="/admin/orders"   className="btn btn-outline">View Orders</Link>
         </div>
