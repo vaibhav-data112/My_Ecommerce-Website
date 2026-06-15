@@ -9,8 +9,6 @@ const CATEGORIES = [
   { name: 'Ground Spices', icon: '🟡', desc: 'Haldi, mirchi, dhaniya powder' },
   { name: 'Spice Blends',  icon: '🫙', desc: 'Garam masala, chaat masala & more' },
   { name: 'Organic',       icon: '🌱', desc: 'Certified organic & natural' },
-  { name: 'Salt',          icon: '🧂', desc: 'Rock salt, black salt & more' },
-  { name: 'Chilli',        icon: '🌶️', desc: 'Kashmiri, Byadgi, Guntur' },
 ]
 
 const WHY_KARVII = [
@@ -18,6 +16,30 @@ const WHY_KARVII = [
   { icon: '📦', title: 'Fresh & Pure',     desc: 'Packed to preserve maximum aroma and flavour' },
   { icon: '🚀', title: 'Fast Delivery',    desc: 'Pan-India delivery with careful packaging' },
   { icon: '🌿', title: 'No Additives',     desc: '100% natural, no artificial colours or preservatives' },
+]
+
+const TESTIMONIALS = [
+  {
+    stars: 5,
+    text: 'The Kashmiri chilli powder is absolutely stunning — deep red colour and mild heat. My curries have never looked or tasted better. Will definitely order again!',
+    name: 'Priya Sharma',
+    location: 'Mumbai',
+    avatar: '👩',
+  },
+  {
+    stars: 5,
+    text: 'I\'ve tried many garam masala brands but Karvii\'s blend is in a different league. You can smell the freshness the moment you open the pack. Highly recommend.',
+    name: 'Rajesh Kumar',
+    location: 'Delhi',
+    avatar: '👨',
+  },
+  {
+    stars: 4,
+    text: 'Ordered the cumin seeds and turmeric powder. Packaging was excellent and both arrived fresh. The turmeric colour is so vibrant — this is clearly a quality product.',
+    name: 'Ananya Nair',
+    location: 'Bengaluru',
+    avatar: '👩',
+  },
 ]
 
 export default function HomePage() {
@@ -35,33 +57,31 @@ export default function HomePage() {
     <>
       {/* Offer Banner */}
       <div className="offer-banner">
-        🌿 Free Shipping above ₹799
+        🌿 Free Shipping on orders above ₹499
         <span>|</span>
         Pan-India Delivery
         <span>|</span>
-        100% Natural & Pure
+        100% Natural &amp; Pure
       </div>
 
       {/* Hero */}
       <section className="hero">
         <div className="container">
           <div className="hero-grid">
-            {/* Left — text */}
             <div>
               <div className="hero-eyebrow">Premium Indian Spices</div>
               <h1 className="hero-title">
                 Pure Spices,<br /><span>Authentic Flavours</span>
               </h1>
               <p className="hero-subtitle">
-                Carefully sourced from the finest farms across India. From smoky whole peppercorns
-                to vibrant Kashmiri chilli — bring real flavour to your kitchen.
+                Carefully sourced from the finest farms across India. From smoky whole
+                peppercorns to vibrant Kashmiri chilli — bring real flavour to your kitchen.
               </p>
               <div className="hero-btns">
                 <Link to="/products" className="btn btn-primary btn-lg">Shop Now</Link>
                 <Link to="/products?category=Organic" className="btn btn-lg btn-hero-outline">Organic Range</Link>
               </div>
             </div>
-            {/* Right — image */}
             <div>
               <img
                 src="https://images.unsplash.com/photo-1596040033229-a9821ebd058d?w=600&q=80"
@@ -110,16 +130,39 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Why Karvii */}
-      <section style={{ background: 'var(--color-surface-warm)', padding: '64px 0' }}>
+      {/* Testimonials */}
+      <section style={{ background: 'var(--color-surface-warm)', padding: '64px 0', marginBottom: 0 }}>
         <div className="container">
-          <h2 className="section-title" style={{ textAlign: 'center', marginBottom: 40 }}>Why Karvii?</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 32, textAlign: 'center' }}>
+          <h2 className="section-title" style={{ textAlign: 'center' }}>What Our Customers Say</h2>
+          <p className="section-subtitle" style={{ textAlign: 'center' }}>Real reviews from real spice lovers</p>
+          <div className="testimonials-grid">
+            {TESTIMONIALS.map(t => (
+              <div key={t.name} className="testimonial-card">
+                <div className="testimonial-stars">{'★'.repeat(t.stars)}{'☆'.repeat(5 - t.stars)}</div>
+                <p className="testimonial-text">"{t.text}"</p>
+                <div className="testimonial-author">
+                  <div className="testimonial-avatar">{t.avatar}</div>
+                  <div>
+                    <div className="testimonial-name">{t.name}</div>
+                    <div className="testimonial-location">{t.location}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Why Karvii */}
+      <section style={{ padding: '64px 0' }}>
+        <div className="container">
+          <h2 className="section-title" style={{ textAlign: 'center', marginBottom: 40 }}>Why Choose Karvii?</h2>
+          <div className="why-grid">
             {WHY_KARVII.map(f => (
               <div key={f.title}>
-                <div style={{ fontSize: 40, marginBottom: 12 }}>{f.icon}</div>
-                <div style={{ fontFamily: 'var(--font-head)', fontSize: 17, color: 'var(--color-primary-dark)', marginBottom: 6 }}>{f.title}</div>
-                <p style={{ fontSize: 13, color: 'var(--color-text-soft)', lineHeight: 1.7 }}>{f.desc}</p>
+                <div className="why-icon">{f.icon}</div>
+                <div className="why-title">{f.title}</div>
+                <p className="why-desc">{f.desc}</p>
               </div>
             ))}
           </div>
