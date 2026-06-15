@@ -443,6 +443,21 @@ def migrate_db():
             if col not in orders_cols:
                 conn.execute(ddl)
 
+        # Feature 17: contact messages table
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS contact_messages (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id      INTEGER,
+                name         TEXT    NOT NULL,
+                email        TEXT    NOT NULL,
+                order_number TEXT,
+                category     TEXT    NOT NULL,
+                message      TEXT    NOT NULL,
+                status       TEXT    NOT NULL DEFAULT 'new',
+                created_at   TEXT    DEFAULT (datetime('now'))
+            )
+        """)
+
         conn.commit()
     finally:
         conn.close()

@@ -22,6 +22,8 @@ export default function AdminDashboard() {
         <Link to="/admin"          className="admin-nav-link active">Dashboard</Link>
         <Link to="/admin/products" className="admin-nav-link">Products</Link>
         <Link to="/admin/orders"   className="admin-nav-link">Orders</Link>
+        <Link to="/admin/returns"  className="admin-nav-link">Returns</Link>
+        <Link to="/admin/contacts" className="admin-nav-link">Contact Messages</Link>
         <Link to="/"               className="admin-nav-link">← Back to Store</Link>
       </aside>
       <div className="admin-content">

@@ -72,7 +72,7 @@ export default function Footer() {
               <div className="footer-heading">Help & Info</div>
               <ul className="footer-links">
                 <li><Link to="/products">Browse Products</Link></li>
-                <li><a href="mailto:hello@karvii.in">Contact Us</a></li>
+                <li><Link to="/contact">Contact Us</Link></li>
                 <li><span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 'var(--fs-sm)' }}>Shipping Policy</span></li>
                 <li><span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 'var(--fs-sm)' }}>Returns Policy</span></li>
                 <li><span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 'var(--fs-sm)' }}>Privacy Policy</span></li>

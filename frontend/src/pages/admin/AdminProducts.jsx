@@ -14,6 +14,8 @@ function AdminSidebar({ active }) {
       <Link to="/admin"          className={`admin-nav-link${active === 'dashboard' ? ' active' : ''}`}>Dashboard</Link>
       <Link to="/admin/products" className={`admin-nav-link${active === 'products'  ? ' active' : ''}`}>Products</Link>
       <Link to="/admin/orders"   className={`admin-nav-link${active === 'orders'    ? ' active' : ''}`}>Orders</Link>
+      <Link to="/admin/returns"  className="admin-nav-link">Returns</Link>
+      <Link to="/admin/contacts" className="admin-nav-link">Contact Messages</Link>
       <Link to="/"               className="admin-nav-link">← Back to Store</Link>
     </aside>
   )

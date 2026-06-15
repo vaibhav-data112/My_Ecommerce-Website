@@ -22,6 +22,8 @@ import AdminDashboard    from './pages/admin/AdminDashboard'
 import AdminProducts     from './pages/admin/AdminProducts'
 import AdminOrders       from './pages/admin/AdminOrders'
 import AdminReturns      from './pages/admin/AdminReturns'
+import AdminContacts     from './pages/admin/AdminContacts'
+import ContactPage       from './pages/ContactPage'
 import NotFoundPage      from './pages/NotFoundPage'
 
 export default function App() {
@@ -36,6 +38,7 @@ export default function App() {
             <Route path="/products/:id" element={<ProductDetailPage />} />
             <Route path="/login"        element={<LoginPage />} />
             <Route path="/signup"       element={<SignupPage />} />
+            <Route path="/contact"      element={<ContactPage />} />
 
             <Route path="/cart"        element={<AuthGuard><CartPage /></AuthGuard>} />
             <Route path="/checkout"    element={<AuthGuard><CheckoutPage /></AuthGuard>} />
@@ -48,7 +51,8 @@ export default function App() {
             <Route path="/admin"          element={<AdminGuard><AdminDashboard /></AdminGuard>} />
             <Route path="/admin/products" element={<AdminGuard><AdminProducts /></AdminGuard>} />
             <Route path="/admin/orders"   element={<AdminGuard><AdminOrders /></AdminGuard>} />
-            <Route path="/admin/returns"  element={<AdminGuard><AdminReturns /></AdminGuard>} />
+            <Route path="/admin/returns"   element={<AdminGuard><AdminReturns /></AdminGuard>} />
+            <Route path="/admin/contacts"  element={<AdminGuard><AdminContacts /></AdminGuard>} />
 
             <Route path="*" element={<NotFoundPage />} />
           </Routes>

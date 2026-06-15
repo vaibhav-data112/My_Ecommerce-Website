@@ -642,6 +642,73 @@ textarea.form-input { resize: vertical; min-height: 100px; }
 .testimonial-location { font-size: var(--fs-xs); color: var(--color-text-soft); }
 
 /* ===========================
+   CONTACT PAGE
+   =========================== */
+.contact-layout {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: 36px;
+  align-items: start;
+}
+.whatsapp-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: #25D366;
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 14px 22px;
+  font-size: var(--fs-base);
+  font-weight: 600;
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: background 0.18s;
+  text-decoration: none;
+  width: 100%;
+  justify-content: center;
+}
+.whatsapp-btn:hover { background: #1ebe57; color: #fff; }
+.contact-sidebar-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  margin-bottom: 16px;
+}
+.contact-sidebar-card h3 {
+  font-family: var(--font-head);
+  color: var(--color-primary-dark);
+  margin-bottom: 10px;
+  font-size: 17px;
+}
+/* Admin contact message cards */
+.contact-msg-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  margin-bottom: 14px;
+  transition: opacity 0.2s;
+}
+.contact-msg-card.resolved { opacity: 0.6; }
+.contact-msg-meta {
+  display: flex; gap: 8px; flex-wrap: wrap;
+  align-items: center; margin-bottom: 10px;
+  font-size: var(--fs-xs); color: var(--color-text-soft);
+}
+.contact-msg-body {
+  font-size: var(--fs-sm); color: var(--color-text);
+  line-height: 1.7; margin-bottom: 12px; white-space: pre-wrap;
+}
+.badge-new      { background: #dbeafe; color: #1d4ed8; }
+.badge-resolved { background: #D1FAE5; color: #1a5c34; }
+
+@media (max-width: 768px) {
+  .contact-layout { grid-template-columns: 1fr; }
+}
+
+/* ===========================
    RETURN / REFUND UI
    =========================== */
 .return-section { margin-top: 20px; }
