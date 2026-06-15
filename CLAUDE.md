@@ -158,4 +158,4 @@ Seed data (inserted once on first run): demo user `demo@example.com` / `demo1234
 | 08 | `order-management` | Order history, status tracking ✅ |
 | 09 | `admin-dashboard` | Product CRUD, order status management ✅ |
 | 10 | `reviews-ratings` | Product reviews and star ratings ✅ |
-| 11 | `product-image-upload` | File upload to `static/uploads/products/` |
+| 11 | `product-image-upload` | File upload to `static/uploads/products/` ✅ |
