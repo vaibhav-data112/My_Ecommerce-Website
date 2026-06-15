@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { getOrder } from '../api/orders'
+import OrderTimeline from '../components/OrderTimeline'
 import Spinner from '../components/Spinner'
 
 const statusClass = s => `status-badge badge-${s}`
@@ -64,13 +65,23 @@ export default function OrderDetailPage() {
           </div>
         </div>
 
-        <div className="card" style={{ padding: 24 }}>
+        <div className="card" style={{ padding: 24, marginBottom: 20 }}>
           <h4 style={{ fontWeight: 600, marginBottom: 12, color: 'var(--text-soft)', fontSize: 13, textTransform: 'uppercase', letterSpacing: 1 }}>Delivery Address</h4>
           <div style={{ fontSize: 14, lineHeight: 1.8 }}>
             <strong>{order.shipping_name}</strong><br />
             {order.shipping_phone}<br />
             {order.shipping_address}
           </div>
+        </div>
+
+        <div className="card" style={{ padding: 28 }}>
+          <h4 style={{ fontWeight: 600, marginBottom: 4, color: 'var(--text-soft)', fontSize: 13, textTransform: 'uppercase', letterSpacing: 1 }}>Order Tracking</h4>
+          <OrderTimeline
+            statusHistory={order.status_history || []}
+            currentStatus={order.status}
+            courierName={order.courier_name}
+            trackingNumber={order.tracking_number}
+          />
         </div>
       </div>
     </div>

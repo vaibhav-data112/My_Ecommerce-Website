@@ -8,13 +8,17 @@ from werkzeug.utils import secure_filename
 
 from catalog import CATEGORIES
 from db import (
-    create_product, delete_product, get_all_orders_admin, get_all_products,
-    get_order_by_id, get_product_by_id, update_order_status, update_product,
+    append_status_history, create_product, delete_product, get_all_orders_admin,
+    get_all_products, get_order_by_id, get_product_by_id, update_courier_details,
+    update_product,
 )
 
 admin = Blueprint('admin', __name__, url_prefix='/api/admin')
 
-ALLOWED_STATUSES = ['paid', 'shipped', 'delivered', 'cancelled']
+ALLOWED_STATUSES = [
+    'paid', 'packed', 'shipped', 'out_for_delivery', 'delivered',
+    'cancelled', 'returned', 'refunded',
+]
 UPLOAD_FOLDER    = os.path.join('static', 'uploads', 'products')
 ALLOWED_EXT      = {'jpg', 'jpeg', 'png', 'webp'}
 MAX_FILE_BYTES   = 5 * 1024 * 1024
@@ -189,5 +193,13 @@ def update_status(order_id):
     new_status = data.get('status', '').strip()
     if new_status not in ALLOWED_STATUSES:
         return jsonify({'error': 'Invalid status.'}), 400
-    update_order_status(order_id, new_status)
+
+    note            = (data.get('note')            or '').strip() or None
+    courier_name    = (data.get('courier_name')    or '').strip() or None
+    tracking_number = (data.get('tracking_number') or '').strip() or None
+
+    append_status_history(order_id, new_status, note=note)
+    if new_status == 'shipped':
+        update_courier_details(order_id, courier_name, tracking_number)
+
     return jsonify({'success': True, 'message': f'Order #{order_id} updated to {new_status}.'})

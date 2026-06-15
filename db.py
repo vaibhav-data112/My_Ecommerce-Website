@@ -406,6 +406,30 @@ def migrate_db():
             )
         """)
 
+        # Feature 15: order tracking timeline columns
+        orders_cols = [r[1] for r in conn.execute("PRAGMA table_info(orders)").fetchall()]
+        for col, ddl in [
+            ('status_history',  "ALTER TABLE orders ADD COLUMN status_history TEXT"),
+            ('courier_name',    "ALTER TABLE orders ADD COLUMN courier_name TEXT"),
+            ('tracking_number', "ALTER TABLE orders ADD COLUMN tracking_number TEXT"),
+        ]:
+            if col not in orders_cols:
+                conn.execute(ddl)
+
+        # Back-fill: existing orders with no history get a single entry from current status
+        import json as _json
+        backfill = conn.execute(
+            "SELECT id, status, created_at FROM orders WHERE status_history IS NULL"
+        ).fetchall()
+        for row in backfill:
+            hist = _json.dumps([{
+                "status": row['status'],
+                "at":     row['created_at'] or '',
+                "note":   None,
+            }])
+            conn.execute("UPDATE orders SET status_history = ? WHERE id = ?",
+                         (hist, row['id']))
+
         conn.commit()
     finally:
         conn.close()
@@ -626,7 +650,8 @@ def can_user_review(user_id, product_id):
         purchased = conn.execute("""
             SELECT 1 FROM order_items oi
             JOIN orders o ON oi.order_id = o.id
-            WHERE o.user_id = ? AND oi.product_id = ? AND o.status = 'paid'
+            WHERE o.user_id = ? AND oi.product_id = ?
+            AND o.status IN ('paid', 'packed', 'shipped', 'out_for_delivery', 'delivered')
             LIMIT 1
         """, (user_id, product_id)).fetchone()
         if not purchased:
@@ -781,6 +806,43 @@ def update_order_status(order_id, status):
     conn = get_db()
     try:
         conn.execute("UPDATE orders SET status = ? WHERE id = ?", (status, order_id))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def append_status_history(order_id, new_status, note=None):
+    """Append a status entry to the order's JSON history and update the status column."""
+    import json as _json
+    from datetime import datetime, timezone
+    conn = get_db()
+    try:
+        row = conn.execute(
+            "SELECT status_history FROM orders WHERE id = ?", (order_id,)
+        ).fetchone()
+        history = _json.loads(row['status_history'] or '[]')
+        history.append({
+            "status": new_status,
+            "at":     datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S'),
+            "note":   note or None,
+        })
+        conn.execute(
+            "UPDATE orders SET status = ?, status_history = ? WHERE id = ?",
+            (new_status, _json.dumps(history), order_id)
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def update_courier_details(order_id, courier_name, tracking_number):
+    """Save courier name and tracking number on the order row (set when shipped)."""
+    conn = get_db()
+    try:
+        conn.execute(
+            "UPDATE orders SET courier_name = ?, tracking_number = ? WHERE id = ?",
+            (courier_name or None, tracking_number or None, order_id)
+        )
         conn.commit()
     finally:
         conn.close()

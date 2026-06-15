@@ -27,8 +27,12 @@ def order_history():
 @orders.route('/orders/<int:order_id>')
 @login_required
 def order_detail(order_id):
+    import json as _json
     order = get_order_by_id(order_id)
     if not order or order['user_id'] != int(current_user.id):
         return jsonify({'error': 'Order not found.'}), 404
-    items = get_order_items(order_id)
-    return jsonify({'order': dict(order), 'items': [dict(i) for i in items]})
+    items      = get_order_items(order_id)
+    order_dict = dict(order)
+    raw_hist   = order_dict.get('status_history')
+    order_dict['status_history'] = _json.loads(raw_hist) if raw_hist else []
+    return jsonify({'order': order_dict, 'items': [dict(i) for i in items]})
