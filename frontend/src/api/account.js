@@ -1,9 +1,8 @@
 import client from './client'
-import axios from 'axios'
 
 export const getDashboard          = ()       => client.get('/account')
 export const getProfile            = ()       => client.get('/account/profile')
-export const updateProfile         = (form)   => axios.post('/api/account/profile', form, { withCredentials: true })
+export const updateProfile         = (form)   => client.post('/account/profile', form)
 export const deleteAvatar          = ()       => client.post('/account/profile/delete-avatar')
 export const getAddresses          = ()       => client.get('/account/addresses')
 export const addAddress            = (data)   => client.post('/account/addresses/new', data)
