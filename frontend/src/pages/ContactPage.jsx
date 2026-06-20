@@ -67,7 +67,7 @@ export default function ContactPage() {
                   aria-hidden="true"
                 />
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+                <div className="contact-form-row">
                   <div>
                     <label className="form-label">Name *</label>
                     <input className="form-input" placeholder="Your name"
@@ -80,7 +80,7 @@ export default function ContactPage() {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+                <div className="contact-form-row">
                   <div>
                     <label className="form-label">Order Number <span style={{ fontWeight: 400, color: 'var(--color-text-soft)' }}>(optional)</span></label>
                     <input className="form-input" placeholder="e.g. 42"

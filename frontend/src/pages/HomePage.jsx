@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { getFeatured } from '../api/products'
 import ProductCard from '../components/ProductCard'
 import Spinner from '../components/Spinner'
+import { FREE_SHIPPING_THRESHOLD } from '../config'
 
 const CATEGORIES = [
   { name: 'Whole Spices',  icon: '🌿', desc: 'Jeera, kali mirch, laung & more' },
@@ -57,7 +58,7 @@ export default function HomePage() {
     <>
       {/* Offer Banner */}
       <div className="offer-banner">
-        🌿 Free Shipping on orders above ₹499
+        🌿 Free Shipping on orders above ₹{FREE_SHIPPING_THRESHOLD}
         <span>|</span>
         Pan-India Delivery
         <span>|</span>

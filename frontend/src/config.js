@@ -1,6 +1,9 @@
 // WhatsApp owner number: country code + number, no +, no spaces (e.g. 919876543210)
 export const WHATSAPP_NUMBER = '919336768655'
 
+// Free shipping threshold — must match db.py SHIPPING_FEE logic (subtotal >= 500)
+export const FREE_SHIPPING_THRESHOLD = 500
+
 const _prefill = [
   'Namaste Karvii Spices',
   '',

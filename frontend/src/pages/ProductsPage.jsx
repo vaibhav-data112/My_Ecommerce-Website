@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { getProducts } from '../api/products'
 import ProductCard from '../components/ProductCard'
 import Spinner from '../components/Spinner'
+import { FREE_SHIPPING_THRESHOLD } from '../config'
 
 const CATEGORIES = ['Whole Spices', 'Ground Spices', 'Spice Blends', 'Organic', 'Salt', 'Chilli']
 
@@ -41,7 +42,7 @@ export default function ProductsPage() {
     <>
       {/* Offer Banner */}
       <div className="offer-banner">
-        🌿 Free Shipping above ₹799
+        🌿 Free Shipping above ₹{FREE_SHIPPING_THRESHOLD}
         <span>|</span>
         Pan-India Delivery
         <span>|</span>

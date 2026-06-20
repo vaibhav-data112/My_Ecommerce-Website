@@ -704,8 +704,17 @@ textarea.form-input { resize: vertical; min-height: 100px; }
 .badge-new      { background: #dbeafe; color: #1d4ed8; }
 .badge-resolved { background: #D1FAE5; color: #1a5c34; }
 
+/* contact form internal 2-col rows */
+.contact-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
 @media (max-width: 768px) {
-  .contact-layout { grid-template-columns: 1fr; }
+  .contact-layout    { grid-template-columns: 1fr; }
+  .contact-form-row  { grid-template-columns: 1fr; }
 }
 
 /* ===========================

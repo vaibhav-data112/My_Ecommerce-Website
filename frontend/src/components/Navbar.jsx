@@ -30,6 +30,7 @@ export default function Navbar() {
 
           <div className="navbar-links">
             <Link to="/products" className="navbar-link">Shop</Link>
+            <Link to="/contact"  className="navbar-link">Contact</Link>
 
             {user ? (
               <>
@@ -71,6 +72,7 @@ export default function Navbar() {
 
       <div className={`mobile-nav${mobileOpen ? ' open' : ''}`}>
         <Link to="/products" className="mobile-nav-link" onClick={closeMobile}>Shop</Link>
+        <Link to="/contact"  className="mobile-nav-link" onClick={closeMobile}>Contact</Link>
         {user ? (
           <>
             <Link to="/wishlist" className="mobile-nav-link" onClick={closeMobile}>♡ Wishlist</Link>
