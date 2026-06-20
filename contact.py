@@ -1,24 +1,12 @@
-from functools import wraps
-
 from flask import Blueprint, jsonify, request
 from flask_login import current_user
 
 from db import get_db
+from utils import admin_required
 
 contact = Blueprint('contact', __name__, url_prefix='/api')
 
 ALLOWED_CATEGORIES = ['Return issue', 'Product issue', 'Order issue', 'Other']
-
-
-def _admin_required(f):
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        if not current_user.is_authenticated:
-            return jsonify({'error': 'Authentication required', 'login_required': True}), 401
-        if not current_user.is_admin:
-            return jsonify({'error': 'Admin access required.'}), 403
-        return f(*args, **kwargs)
-    return decorated
 
 
 # ---------------------------------------------------------------------------
@@ -74,7 +62,7 @@ def submit_contact():
 # ---------------------------------------------------------------------------
 
 @contact.route('/admin/contacts')
-@_admin_required
+@admin_required
 def get_contacts():
     status_filter = (request.args.get('status') or '').strip()
     conn = get_db()
@@ -98,7 +86,7 @@ def get_contacts():
 # ---------------------------------------------------------------------------
 
 @contact.route('/admin/contacts/<int:msg_id>/resolve', methods=['PATCH'])
-@_admin_required
+@admin_required
 def resolve_contact(msg_id):
     conn = get_db()
     try:

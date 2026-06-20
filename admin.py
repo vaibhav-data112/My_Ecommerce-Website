@@ -1,7 +1,5 @@
 import os
 import uuid
-from functools import wraps
-
 from flask import Blueprint, jsonify, redirect, request, url_for
 from flask_login import current_user
 from werkzeug.utils import secure_filename
@@ -12,6 +10,7 @@ from db import (
     get_all_products, get_db, get_order_by_id, get_product_by_id,
     update_courier_details, update_product,
 )
+from utils import admin_required
 
 admin = Blueprint('admin', __name__, url_prefix='/api/admin')
 
@@ -22,17 +21,6 @@ ALLOWED_STATUSES = [
 UPLOAD_FOLDER    = os.path.join('static', 'uploads', 'products')
 ALLOWED_EXT      = {'jpg', 'jpeg', 'png', 'webp'}
 MAX_FILE_BYTES   = 5 * 1024 * 1024
-
-
-def admin_required(f):
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        if not current_user.is_authenticated:
-            return jsonify({'error': 'Authentication required', 'login_required': True}), 401
-        if not current_user.is_admin:
-            return jsonify({'error': 'Admin access required.'}), 403
-        return f(*args, **kwargs)
-    return decorated
 
 
 def _save_uploaded_image():

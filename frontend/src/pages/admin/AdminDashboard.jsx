@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { getDashboard } from '../../api/admin'
+import AdminSidebar from '../../components/AdminSidebar'
 import Spinner from '../../components/Spinner'
 
 export default function AdminDashboard() {
@@ -15,17 +15,7 @@ export default function AdminDashboard() {
 
   return (
     <div className="admin-layout">
-      <aside className="admin-sidebar">
-        <div style={{ padding: '0 20px 20px', fontFamily: 'var(--font-head)', color: 'var(--color-primary-dark)', fontSize: 18, fontWeight: 700 }}>
-          🌶 Admin
-        </div>
-        <Link to="/admin"          className="admin-nav-link active">Dashboard</Link>
-        <Link to="/admin/products" className="admin-nav-link">Products</Link>
-        <Link to="/admin/orders"   className="admin-nav-link">Orders</Link>
-        <Link to="/admin/returns"  className="admin-nav-link">Returns</Link>
-        <Link to="/admin/contacts" className="admin-nav-link">Contact Messages</Link>
-        <Link to="/"               className="admin-nav-link">← Back to Store</Link>
-      </aside>
+      <AdminSidebar active="dashboard" />
       <div className="admin-content">
         <h2 style={{ fontFamily: 'var(--font-head)', color: 'var(--color-primary-dark)', marginBottom: 28 }}>Dashboard</h2>
         <div className="stats-grid">

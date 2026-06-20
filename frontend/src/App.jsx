@@ -22,9 +22,12 @@ import AdminDashboard    from './pages/admin/AdminDashboard'
 import AdminProducts     from './pages/admin/AdminProducts'
 import AdminOrders       from './pages/admin/AdminOrders'
 import AdminReturns      from './pages/admin/AdminReturns'
-import AdminContacts     from './pages/admin/AdminContacts'
-import ContactPage       from './pages/ContactPage'
-import NotFoundPage      from './pages/NotFoundPage'
+import AdminContacts       from './pages/admin/AdminContacts'
+import ContactPage         from './pages/ContactPage'
+import ShippingPolicyPage  from './pages/ShippingPolicyPage'
+import ReturnsPolicyPage   from './pages/ReturnsPolicyPage'
+import PrivacyPolicyPage   from './pages/PrivacyPolicyPage'
+import NotFoundPage        from './pages/NotFoundPage'
 
 export default function App() {
   return (
@@ -38,7 +41,10 @@ export default function App() {
             <Route path="/products/:id" element={<ProductDetailPage />} />
             <Route path="/login"        element={<LoginPage />} />
             <Route path="/signup"       element={<SignupPage />} />
-            <Route path="/contact"      element={<ContactPage />} />
+            <Route path="/contact"          element={<ContactPage />} />
+            <Route path="/shipping-policy"  element={<ShippingPolicyPage />} />
+            <Route path="/returns-policy"   element={<ReturnsPolicyPage />} />
+            <Route path="/privacy-policy"   element={<PrivacyPolicyPage />} />
 
             <Route path="/cart"        element={<AuthGuard><CartPage /></AuthGuard>} />
             <Route path="/checkout"    element={<AuthGuard><CheckoutPage /></AuthGuard>} />

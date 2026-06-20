@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useAuth }             from '../context/AuthContext'
 import { submitContact }       from '../api/contact'
-import { WHATSAPP_URL }        from '../config'
+import { WHATSAPP_URL, OWNER_EMAIL } from '../config'
 
 const CATEGORIES = ['Return issue', 'Product issue', 'Order issue', 'Other']
 
@@ -129,9 +129,9 @@ export default function ContactPage() {
               <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--color-text-soft)', lineHeight: 1.7, marginBottom: 12 }}>
                 Direct email bhejna chahte hain?
               </p>
-              <a href="mailto:vaibhavtiw2008@gmail.com"
+              <a href={`mailto:${OWNER_EMAIL}`}
                 style={{ color: 'var(--color-primary)', fontWeight: 600, fontSize: 'var(--fs-sm)', wordBreak: 'break-all' }}>
-                vaibhavtiw2008@gmail.com
+                {OWNER_EMAIL}
               </a>
             </div>
 

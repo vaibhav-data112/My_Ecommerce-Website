@@ -73,9 +73,9 @@ export default function Footer() {
               <ul className="footer-links">
                 <li><Link to="/products">Browse Products</Link></li>
                 <li><Link to="/contact">Contact Us</Link></li>
-                <li><span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 'var(--fs-sm)' }}>Shipping Policy</span></li>
-                <li><span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 'var(--fs-sm)' }}>Returns Policy</span></li>
-                <li><span style={{ color: 'rgba(255,255,255,0.5)', fontSize: 'var(--fs-sm)' }}>Privacy Policy</span></li>
+                <li><Link to="/shipping-policy">Shipping Policy</Link></li>
+                <li><Link to="/returns-policy">Returns Policy</Link></li>
+                <li><Link to="/privacy-policy">Privacy Policy</Link></li>
               </ul>
             </div>
 

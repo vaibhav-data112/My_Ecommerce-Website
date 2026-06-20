@@ -15,6 +15,7 @@ from checkout import checkout
 from contact import contact as contact_blueprint
 from db import (get_all_avg_ratings, get_all_products, get_cart_count,
                 get_user_wishlist, get_wishlist_count, init_db, migrate_db, seed_db)
+from extensions import limiter
 from orders import orders
 from payment import payment
 from reviews import reviews
@@ -31,6 +32,9 @@ CORS(app, supports_credentials=True, origins=[
     'http://localhost:5174',
     'http://127.0.0.1:5174',
 ])
+
+limiter.init_app(app)
+
 
 init_db()
 migrate_db()
@@ -55,6 +59,7 @@ app.register_blueprint(orders)
 app.register_blueprint(payment)
 app.register_blueprint(reviews)
 app.register_blueprint(wishlist)
+
 
 
 @app.route('/api/')

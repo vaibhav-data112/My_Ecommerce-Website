@@ -1,7 +1,7 @@
 import os
 
 from flask import (
-    Blueprint, jsonify, redirect, request, url_for
+    Blueprint, current_app, jsonify, redirect, request, url_for
 )
 from flask_login import (
     LoginManager, UserMixin, current_user, login_required as _login_required,
@@ -10,6 +10,7 @@ from flask_login import (
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from db import get_db
+from extensions import limiter
 
 auth = Blueprint('auth', __name__)
 
@@ -101,6 +102,7 @@ def api_signup():
 
 
 @auth.route('/api/auth/login', methods=['POST'])
+@limiter.limit('10 per minute', exempt_when=lambda: current_app.testing)
 def api_login():
     data     = request.get_json(silent=True) or {}
     email    = data.get('email', '').strip().lower()

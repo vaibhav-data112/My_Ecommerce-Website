@@ -1,25 +1,9 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { getProducts, getProduct, addProduct, editProduct, deleteProduct } from '../../api/admin'
+import AdminSidebar from '../../components/AdminSidebar'
 import Spinner from '../../components/Spinner'
 
 const EMPTY_FORM = { name: '', description: '', price: '', stock: '', category: 'Whole Spices', image_url: '' }
-
-function AdminSidebar({ active }) {
-  return (
-    <aside className="admin-sidebar">
-      <div style={{ padding: '0 20px 20px', fontFamily: 'var(--font-head)', color: 'var(--color-primary-dark)', fontSize: 18, fontWeight: 700 }}>
-        🌶 Admin
-      </div>
-      <Link to="/admin"          className={`admin-nav-link${active === 'dashboard' ? ' active' : ''}`}>Dashboard</Link>
-      <Link to="/admin/products" className={`admin-nav-link${active === 'products'  ? ' active' : ''}`}>Products</Link>
-      <Link to="/admin/orders"   className={`admin-nav-link${active === 'orders'    ? ' active' : ''}`}>Orders</Link>
-      <Link to="/admin/returns"  className="admin-nav-link">Returns</Link>
-      <Link to="/admin/contacts" className="admin-nav-link">Contact Messages</Link>
-      <Link to="/"               className="admin-nav-link">← Back to Store</Link>
-    </aside>
-  )
-}
 
 function ProductForm({ title, form, setForm, categories, onSubmit, onCancel, submitting, imageInputId }) {
   return (

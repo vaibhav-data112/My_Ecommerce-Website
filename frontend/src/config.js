@@ -4,6 +4,9 @@ export const WHATSAPP_NUMBER = '919336768655'
 // Free shipping threshold — must match db.py SHIPPING_FEE logic (subtotal >= 500)
 export const FREE_SHIPPING_THRESHOLD = 500
 
+// Owner contact details
+export const OWNER_EMAIL = 'vaibhavtiw2008@gmail.com'
+
 const _prefill = [
   'Namaste Karvii Spices',
   '',

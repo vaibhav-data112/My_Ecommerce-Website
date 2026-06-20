@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { getReturns, approveReturn, rejectReturn, processRefund } from '../../api/admin'
+import AdminSidebar from '../../components/AdminSidebar'
 import Spinner from '../../components/Spinner'
 
 export default function AdminReturns() {
@@ -73,17 +73,7 @@ export default function AdminReturns() {
 
   return (
     <div className="admin-layout">
-      <aside className="admin-sidebar">
-        <div style={{ padding: '0 20px 20px', fontFamily: 'var(--font-head)', color: 'var(--color-primary-dark)', fontSize: 18, fontWeight: 700 }}>
-          🌶 Admin
-        </div>
-        <Link to="/admin"          className="admin-nav-link">Dashboard</Link>
-        <Link to="/admin/products" className="admin-nav-link">Products</Link>
-        <Link to="/admin/orders"   className="admin-nav-link">Orders</Link>
-        <Link to="/admin/returns"  className="admin-nav-link active">Returns</Link>
-        <Link to="/admin/contacts" className="admin-nav-link">Contact Messages</Link>
-        <Link to="/"               className="admin-nav-link">← Back to Store</Link>
-      </aside>
+      <AdminSidebar active="returns" />
 
       <div className="admin-content">
         <h2 style={{ fontFamily: 'var(--font-head)', color: 'var(--color-primary-dark)', marginBottom: 24 }}>
