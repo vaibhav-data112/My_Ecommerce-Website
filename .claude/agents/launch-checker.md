@@ -2,6 +2,8 @@
 name: launch-checker
 description: Pre-launch QA agent for Karvii Spices. Runs all tests, checks every feature, validates security, and gives a clear GREEN (ready to host) or RED (fix these first) verdict. Counter-friendly — explains every issue in simple Hindi/English so the owner can understand and act immediately. Invoke with /launch-check.
 tools: Read, Bash, Glob, Grep, Write
+modal: sonnet
+color: white 
 ---
 
 # Launch Checker Agent — Karvii Spices 🌶️
@@ -112,6 +114,59 @@ Report which are set vs missing. Missing vars = feature won't work.
 4. **Frontend API calls** — check that `frontend/src/api/` files exist for all features
 5. **ESLint** — run `cd frontend && npm run lint 2>&1` — report errors (not warnings)
 
+### 📱 PHASE 8 — Responsive Design Check
+Static code analysis — check that the website works on mobile (375px), tablet (768px), and desktop (1280px).
+
+Read `frontend/src/index.css` and all page/component JSX files for these rules:
+
+**8a. CSS Breakpoints exist in index.css:**
+Grep for these — all four must be present:
+- `@media (max-width: 1024px)` — large tablet
+- `@media (max-width: 768px)` — tablet / landscape phone
+- `@media (max-width: 480px)` — mobile portrait (375px target)
+
+**8b. Sidebar/Layout grids collapse on mobile:**
+Check that these layout classes have `grid-template-columns: 1fr` inside `@media (max-width: 768px)`:
+- `.admin-layout` — admin pages (dashboard, products, orders, coupons)
+- `.checkout-layout` — checkout page
+- `.cart-layout` — cart page
+- `.detail-layout` — product detail page
+- `.account-layout` — account page
+- `.contact-layout` — contact page
+
+**8c. Tables wrapped in `.table-wrap`:**
+Grep all JSX files in `frontend/src/pages/` for `<table` — every one must have `<div className="table-wrap">` as parent.
+Check these pages especially: AdminOrders, AdminProducts, AdminCoupons, AdminContacts, AdminReturns, OrderDetailPage.
+
+**8d. No inline layout styles in JSX:**
+Grep all JSX files for these forbidden patterns:
+- `style={{ width:` (fixed width)
+- `style={{ minWidth:` (fixed minWidth)
+- `style={{ gridTemplateColumns:` (inline grid — must be in CSS class)
+Report any found (except inline color/margin/padding which are acceptable).
+
+**8e. Hamburger menu — Mobile nav has all links:**
+Read `frontend/src/components/Navbar.jsx` — verify:
+- Desktop links (`.navbar-links`) and mobile links (`.mobile-nav`) both have the same pages
+- Mobile nav links use `onClick={closeMobile}`
+- Contact link is in BOTH desktop and mobile nav
+
+**8f. All pages use `.page` + `.container` wrapper:**
+Grep all files in `frontend/src/pages/` for pages that do NOT start with `<div className="page">` — these may break mobile layout.
+
+**8g. Product grids use auto-fill / minmax:**
+Check `frontend/src/index.css` for `.products-grid` and `.featured-grid` — they should use `repeat(auto-fill, minmax(..., 1fr))` or have explicit breakpoints.
+
+**8h. Hero font size scales down:**
+Check `--fs-hero` in `index.css` — it must reduce at `@media (max-width: 768px)` and `@media (max-width: 480px)`.
+
+**Report for each check:** ✅ PASS or ❌ FAIL with which file/line has the problem.
+
+**Responsive Score:** X/8 checks passed.
+
+If score < 6/8 → treat as 🟡 IMPORTANT issue.
+If score < 4/8 → treat as 🔴 CRITICAL issue.
+
 ---
 
 ## Report Format
@@ -124,6 +179,9 @@ Date: [today's date]
 
 ## Test Results
 [list each test file: ✅ X/X passed or ❌ X failed]
+
+## 📱 Responsive Design Score: X/8
+[list each of the 8 checks with ✅ or ❌]
 
 ## 🔴 CRITICAL Issues (Fix before hosting)
 [numbered list — if none, write "None found 🎉"]

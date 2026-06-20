@@ -204,7 +204,7 @@ app.register_blueprint(contact_blueprint)
 
 ```js
 // WhatsApp owner number: country code + number, no +, no spaces (e.g. 919876543210)
-export const WHATSAPP_NUMBER = '919876543210'
+export const WHATSAPP_NUMBER = '919336768655'
 
 const prefill = [
   'Namaste Karvii Spices',

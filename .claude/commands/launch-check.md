@@ -8,6 +8,7 @@ The launch-checker will:
 5. Feature completeness check — all 17+ features working
 6. Environment variables audit — which .env vars are set vs missing
 7. Code quality scan — TODOs, console.logs, ESLint errors
+8. Responsive design check — breakpoints, layout grids collapse on mobile, tables wrapped, no inline styles, hamburger nav, page wrappers
 
 Final output:
 - 🟢 GREEN SIGNAL: "Website ready hai — deploy kar sakte ho!"
