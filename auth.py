@@ -171,8 +171,8 @@ def google_callback():
 
         if not row:
             conn.execute(
-                "INSERT INTO users (name, email, google_id) VALUES (?, ?, ?)",
-                (name, email, google_id),
+                "INSERT INTO users (name, email, google_id, password_hash) VALUES (?, ?, ?, ?)",
+                (name, email, google_id, ''),
             )
             conn.commit()
             row = conn.execute("SELECT * FROM users WHERE google_id = ?", (google_id,)).fetchone()
