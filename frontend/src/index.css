@@ -718,6 +718,47 @@ textarea.form-input { resize: vertical; min-height: 100px; }
 }
 
 /* ===========================
+   COUPON UI
+   =========================== */
+.coupon-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.coupon-row .form-input {
+  flex: 1;
+  padding: 9px 12px;
+  font-size: var(--fs-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.coupon-applied {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #D1FAE5;
+  color: #1a5c34;
+  border-radius: var(--radius);
+  padding: 8px 12px;
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  margin-bottom: 12px;
+}
+.coupon-error {
+  color: var(--color-danger);
+  font-size: var(--fs-xs);
+  margin-bottom: 8px;
+}
+.summary-discount {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--fs-sm);
+  margin-bottom: 10px;
+  color: #1a5c34;
+  font-weight: 500;
+}
+
+/* ===========================
    RETURN / REFUND UI
    =========================== */
 .return-section { margin-top: 20px; }

@@ -13,6 +13,7 @@ from cart import cart
 from catalog import catalog
 from checkout import checkout
 from contact import contact as contact_blueprint
+from coupons import coupons_bp
 from db import (get_all_avg_ratings, get_all_products, get_cart_count,
                 get_user_wishlist, get_wishlist_count, init_db, migrate_db, seed_db)
 from extensions import limiter
@@ -51,6 +52,7 @@ init_google_oauth(oauth)
 app.register_blueprint(account_blueprint)
 app.register_blueprint(admin_blueprint)
 app.register_blueprint(contact_blueprint)
+app.register_blueprint(coupons_bp)
 app.register_blueprint(auth)
 app.register_blueprint(cart)
 app.register_blueprint(catalog)

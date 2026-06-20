@@ -23,6 +23,7 @@ import AdminProducts     from './pages/admin/AdminProducts'
 import AdminOrders       from './pages/admin/AdminOrders'
 import AdminReturns      from './pages/admin/AdminReturns'
 import AdminContacts       from './pages/admin/AdminContacts'
+import AdminCoupons        from './pages/admin/AdminCoupons'
 import ContactPage         from './pages/ContactPage'
 import ShippingPolicyPage  from './pages/ShippingPolicyPage'
 import ReturnsPolicyPage   from './pages/ReturnsPolicyPage'
@@ -59,6 +60,7 @@ export default function App() {
             <Route path="/admin/orders"   element={<AdminGuard><AdminOrders /></AdminGuard>} />
             <Route path="/admin/returns"   element={<AdminGuard><AdminReturns /></AdminGuard>} />
             <Route path="/admin/contacts"  element={<AdminGuard><AdminContacts /></AdminGuard>} />
+            <Route path="/admin/coupons"   element={<AdminGuard><AdminCoupons /></AdminGuard>} />
 
             <Route path="*" element={<NotFoundPage />} />
           </Routes>

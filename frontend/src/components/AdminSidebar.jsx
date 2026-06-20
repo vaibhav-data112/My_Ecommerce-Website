@@ -6,6 +6,7 @@ const NAV = [
   { to: '/admin/orders',   label: 'Orders',            key: 'orders'    },
   { to: '/admin/returns',  label: 'Returns',           key: 'returns'   },
   { to: '/admin/contacts', label: 'Contact Messages',  key: 'contacts'  },
+  { to: '/admin/coupons',  label: 'Coupons',           key: 'coupons'   },
 ]
 
 export default function AdminSidebar({ active }) {

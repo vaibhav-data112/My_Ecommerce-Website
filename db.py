@@ -250,14 +250,21 @@ def remove_cart_item(user_id, product_id):
 SHIPPING_FEE = 40.0  # flat ₹40; free when subtotal >= ₹500
 
 
-def calculate_totals(items):
+def calculate_totals(items, discount_amount=0.0):
     subtotal = round(sum(item['price'] * item['quantity'] for item in items), 2)
-    shipping_fee = 0.0 if subtotal >= 500 else SHIPPING_FEE
-    total = round(subtotal + shipping_fee, 2)
-    return {'subtotal': subtotal, 'shipping_fee': shipping_fee, 'total': total}
+    discounted_subtotal = max(0.0, round(subtotal - discount_amount, 2))
+    shipping_fee = 0.0 if discounted_subtotal >= 500 else SHIPPING_FEE
+    total = round(discounted_subtotal + shipping_fee, 2)
+    return {
+        'subtotal':        subtotal,
+        'discount_amount': round(discount_amount, 2),
+        'shipping_fee':    shipping_fee,
+        'total':           total,
+    }
 
 
-def place_order(user_id, shipping_name, shipping_phone, shipping_address):
+def place_order(user_id, shipping_name, shipping_phone, shipping_address,
+                coupon_code=None, discount_amount=0.0):
     conn = get_db()
     try:
         items = conn.execute("""
@@ -274,16 +281,18 @@ def place_order(user_id, shipping_name, shipping_phone, shipping_address):
             if item['stock'] < item['quantity']:
                 return False, f"'{item['name']}' is out of stock or has insufficient quantity", None
 
-        totals = calculate_totals(items)
+        totals = calculate_totals(items, discount_amount)
 
         conn.execute("BEGIN")
         cursor = conn.execute("""
             INSERT INTO orders
               (user_id, status, subtotal, shipping_fee, total,
-               shipping_name, shipping_phone, shipping_address)
-            VALUES (?, 'pending', ?, ?, ?, ?, ?, ?)
+               shipping_name, shipping_phone, shipping_address,
+               coupon_code, discount_amount)
+            VALUES (?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?)
         """, (user_id, totals['subtotal'], totals['shipping_fee'], totals['total'],
-              shipping_name, shipping_phone, shipping_address))
+              shipping_name, shipping_phone, shipping_address,
+              coupon_code or None, totals['discount_amount']))
         order_id = cursor.lastrowid
 
         for item in items:
@@ -294,6 +303,12 @@ def place_order(user_id, shipping_name, shipping_phone, shipping_address):
                 VALUES (?, ?, ?, ?, ?, ?)
             """, (order_id, item['product_id'], item['name'],
                   item['price'], item['quantity'], line_total))
+
+        if coupon_code:
+            conn.execute(
+                "UPDATE coupons SET used_count = used_count + 1 WHERE code = ?",
+                (coupon_code,)
+            )
 
         conn.execute("DELETE FROM cart_items WHERE user_id = ?", (user_id,))
         conn.commit()
@@ -439,6 +454,31 @@ def migrate_db():
             ('return_rejected_reason', "ALTER TABLE orders ADD COLUMN return_rejected_reason TEXT"),
             ('refund_amount',          "ALTER TABLE orders ADD COLUMN refund_amount REAL"),
             ('razorpay_refund_id',     "ALTER TABLE orders ADD COLUMN razorpay_refund_id TEXT"),
+        ]:
+            if col not in orders_cols:
+                conn.execute(ddl)
+
+        # Feature 18: coupons table
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS coupons (
+                id               INTEGER PRIMARY KEY AUTOINCREMENT,
+                code             TEXT    NOT NULL UNIQUE,
+                discount_type    TEXT    NOT NULL CHECK (discount_type IN ('percentage', 'fixed')),
+                discount_value   REAL    NOT NULL,
+                min_order_amount REAL    NOT NULL DEFAULT 0,
+                max_uses         INTEGER NOT NULL DEFAULT 0,
+                used_count       INTEGER NOT NULL DEFAULT 0,
+                expiry_date      TEXT,
+                is_active        INTEGER NOT NULL DEFAULT 1,
+                created_at       TEXT    DEFAULT (datetime('now'))
+            )
+        """)
+
+        # Feature 18: coupon columns on orders
+        orders_cols = [r[1] for r in conn.execute("PRAGMA table_info(orders)").fetchall()]
+        for col, ddl in [
+            ('coupon_code',     "ALTER TABLE orders ADD COLUMN coupon_code TEXT"),
+            ('discount_amount', "ALTER TABLE orders ADD COLUMN discount_amount REAL NOT NULL DEFAULT 0"),
         ]:
             if col not in orders_cols:
                 conn.execute(ddl)
