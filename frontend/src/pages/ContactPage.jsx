@@ -125,6 +125,17 @@ export default function ContactPage() {
             </div>
 
             <div className="contact-sidebar-card">
+              <h3 style={{ fontSize: 15 }}>📧 Email karein</h3>
+              <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--color-text-soft)', lineHeight: 1.7, marginBottom: 12 }}>
+                Direct email bhejna chahte hain?
+              </p>
+              <a href="mailto:vaibhavtiw2008@gmail.com"
+                style={{ color: 'var(--color-primary)', fontWeight: 600, fontSize: 'var(--fs-sm)', wordBreak: 'break-all' }}>
+                vaibhavtiw2008@gmail.com
+              </a>
+            </div>
+
+            <div className="contact-sidebar-card">
               <h3 style={{ fontSize: 15 }}>Response time</h3>
               <ul style={{ fontSize: 'var(--fs-sm)', color: 'var(--color-text-soft)', lineHeight: 2.2, paddingLeft: 18 }}>
                 <li>Form reply: 24 ghante ke andar</li>
