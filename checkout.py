@@ -117,31 +117,34 @@ def checkout_page():
 
     # Send confirmation email in background (never blocks the response)
     try:
-        user = get_user_by_id(user_id)
-        cart_items_for_email = get_cart_items.__wrapped__(user_id) if hasattr(get_cart_items, '__wrapped__') else []
+        user_row = get_user_by_id(user_id)
+        user = dict(user_row) if user_row else None
     except Exception:
         user = None
 
-    if user and user.get('notify_email', 1):
-        conn = get_db()
+    if user and user.get('notify_email', 1) and user.get('email'):
         try:
-            items_for_mail = conn.execute(
-                "SELECT oi.product_name AS name, oi.quantity, oi.unit_price AS price "
-                "FROM order_items oi WHERE oi.order_id = ?", (order_id,)
-            ).fetchall()
-            order_row = conn.execute(
-                "SELECT total FROM orders WHERE id = ?", (order_id,)
-            ).fetchone()
-            items_list = [dict(i) for i in items_for_mail]
-            order_total = order_row['total'] if order_row else 0
-        finally:
-            conn.close()
+            conn = get_db()
+            try:
+                items_for_mail = conn.execute(
+                    "SELECT oi.product_name AS name, oi.quantity, oi.unit_price AS price "
+                    "FROM order_items oi WHERE oi.order_id = ?", (order_id,)
+                ).fetchall()
+                order_row = conn.execute(
+                    "SELECT total FROM orders WHERE id = ?", (order_id,)
+                ).fetchone()
+                items_list = [dict(i) for i in items_for_mail]
+                order_total = order_row['total'] if order_row else 0
+            finally:
+                conn.close()
 
-        threading.Thread(
-            target=send_order_confirmation,
-            args=(order_id, user['name'], user['email'],
-                  items_list, order_total, shipping_address, payment_method),
-            daemon=True,
-        ).start()
+            threading.Thread(
+                target=send_order_confirmation,
+                args=(order_id, user['name'], user['email'],
+                      items_list, order_total, shipping_address, payment_method),
+                daemon=True,
+            ).start()
+        except Exception:
+            pass  # email failure must never affect order response
 
     return jsonify({'success': True, 'order_id': order_id, 'payment_method': payment_method})

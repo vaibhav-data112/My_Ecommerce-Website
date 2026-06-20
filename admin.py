@@ -15,8 +15,8 @@ from utils import admin_required
 admin = Blueprint('admin', __name__, url_prefix='/api/admin')
 
 ALLOWED_STATUSES = [
-    'paid', 'packed', 'shipped', 'out_for_delivery', 'delivered',
-    'cancelled', 'return_requested', 'returned', 'refunded',
+    'pending', 'cod_pending', 'cod_paid', 'paid', 'packed', 'shipped',
+    'out_for_delivery', 'delivered', 'cancelled', 'return_requested', 'returned', 'refunded',
 ]
 UPLOAD_FOLDER    = os.path.join('static', 'uploads', 'products')
 ALLOWED_EXT      = {'jpg', 'jpeg', 'png', 'webp'}

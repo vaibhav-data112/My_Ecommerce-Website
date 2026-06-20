@@ -104,8 +104,13 @@ export default function CheckoutPage() {
         navigate(`/payment/${r.data.order_id}`)
       }
     } catch (err) {
+      const msg = err.response?.data?.error || ''
+      if (msg.toLowerCase().includes('cart is empty')) {
+        navigate('/cart')
+        return
+      }
       if (err.response?.data?.errors) setErrors(err.response.data.errors)
-      else setErrors({ general: err.response?.data?.error || 'Something went wrong' })
+      else setErrors({ general: msg || 'Something went wrong' })
     } finally { setSubmitting(false) }
   }
 
