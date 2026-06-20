@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getCheckoutInfo, placeOrder } from '../api/orders'
 import { validateCoupon } from '../api/coupons'
+import { getAddresses } from '../api/account'
 import { useCart } from '../context/CartContext'
 import Spinner from '../components/Spinner'
 
@@ -16,17 +17,42 @@ export default function CheckoutPage() {
     shipping_name: '', shipping_phone: '', shipping_address: '',
   })
 
+  const [savedAddresses, setSavedAddresses]   = useState([])
+  const [selectedAddrId, setSelectedAddrId]   = useState(null)
+  const [paymentMethod, setPaymentMethod]     = useState('razorpay')
+
   const [couponCode,    setCouponCode]    = useState('')
   const [couponApplied, setCouponApplied] = useState(null)
   const [couponError,   setCouponError]   = useState(null)
   const [couponBusy,    setCouponBusy]    = useState(false)
 
   useEffect(() => {
-    getCheckoutInfo()
-      .then(r => setInfo(r.data))
-      .catch(() => navigate('/cart'))
-      .finally(() => setLoading(false))
+    Promise.all([
+      getCheckoutInfo().catch(() => null),
+      getAddresses().catch(() => ({ data: { addresses: [] } })),
+    ]).then(([checkoutRes, addrRes]) => {
+      if (!checkoutRes) { navigate('/cart'); return }
+      setInfo(checkoutRes.data)
+      const addrs = addrRes?.data?.addresses || []
+      setSavedAddresses(addrs)
+      const def = addrs.find(a => a.is_default) || addrs[0]
+      if (def) applyAddress(def)
+    }).finally(() => setLoading(false))
   }, [])
+
+  function applyAddress(addr) {
+    setSelectedAddrId(addr.id)
+    setForm({
+      shipping_name:    addr.full_name,
+      shipping_phone:   addr.phone,
+      shipping_address: `${addr.address_line}, ${addr.city}, ${addr.state} - ${addr.pincode}`,
+    })
+  }
+
+  function selectNewAddress() {
+    setSelectedAddrId(null)
+    setForm({ shipping_name: '', shipping_phone: '', shipping_address: '' })
+  }
 
   const handleApplyCoupon = async () => {
     const trimmed = couponCode.trim().toUpperCase()
@@ -67,11 +93,16 @@ export default function CheckoutPage() {
     try {
       const payload = {
         ...form,
+        payment_method: paymentMethod,
         ...(couponApplied ? { coupon_code: couponApplied.code } : {}),
       }
       const r = await placeOrder(payload)
       await fetchCart()
-      navigate(`/payment/${r.data.order_id}`)
+      if (paymentMethod === 'cod') {
+        navigate(`/orders/${r.data.order_id}`)
+      } else {
+        navigate(`/payment/${r.data.order_id}`)
+      }
     } catch (err) {
       if (err.response?.data?.errors) setErrors(err.response.data.errors)
       else setErrors({ general: err.response?.data?.error || 'Something went wrong' })
@@ -98,37 +129,105 @@ export default function CheckoutPage() {
               </h3>
               {errors.general && <div className="alert alert-error">{errors.general}</div>}
 
-              <div className="form-group">
-                <label className="form-label">Full Name *</label>
-                <input
-                  className={`form-input${errors.shipping_name ? ' error' : ''}`}
-                  value={form.shipping_name}
-                  onChange={e => setForm(f => ({ ...f, shipping_name: e.target.value }))}
-                />
-                {errors.shipping_name && <div className="form-error">{errors.shipping_name}</div>}
+              {/* Saved address selector */}
+              {savedAddresses.length > 0 && (
+                <div className="saved-addresses-section">
+                  <div className="saved-addresses-label">Saved Addresses</div>
+                  <div className="address-cards">
+                    {savedAddresses.map(addr => (
+                      <div
+                        key={addr.id}
+                        className={`address-card${selectedAddrId === addr.id ? ' selected' : ''}`}
+                        onClick={() => applyAddress(addr)}
+                      >
+                        <div className="address-card-name">
+                          {addr.full_name}
+                          {addr.is_default ? <span className="address-card-badge">Default</span> : null}
+                        </div>
+                        <div className="address-card-detail">
+                          {addr.phone} &bull; {addr.address_line}, {addr.city}, {addr.state} - {addr.pincode}
+                        </div>
+                      </div>
+                    ))}
+                    {selectedAddrId && (
+                      <button type="button" className="btn btn-outline btn-sm" onClick={selectNewAddress}>
+                        + Use a different address
+                      </button>
+                    )}
+                  </div>
+                  {savedAddresses.length > 0 && !selectedAddrId && (
+                    <div className="or-divider">Or enter a new address</div>
+                  )}
+                </div>
+              )}
+
+              {/* Manual form — show when no address selected */}
+              {!selectedAddrId && (
+                <>
+                  <div className="form-group">
+                    <label className="form-label">Full Name *</label>
+                    <input
+                      className={`form-input${errors.shipping_name ? ' error' : ''}`}
+                      value={form.shipping_name}
+                      onChange={e => setForm(f => ({ ...f, shipping_name: e.target.value }))}
+                    />
+                    {errors.shipping_name && <div className="form-error">{errors.shipping_name}</div>}
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Phone Number *</label>
+                    <input
+                      className={`form-input${errors.shipping_phone ? ' error' : ''}`}
+                      value={form.shipping_phone}
+                      onChange={e => setForm(f => ({ ...f, shipping_phone: e.target.value }))}
+                    />
+                    {errors.shipping_phone && <div className="form-error">{errors.shipping_phone}</div>}
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Delivery Address *</label>
+                    <textarea
+                      className={`form-input${errors.shipping_address ? ' error' : ''}`}
+                      rows={4}
+                      value={form.shipping_address}
+                      onChange={e => setForm(f => ({ ...f, shipping_address: e.target.value }))}
+                      placeholder="House/Flat, Street, Area, City, State, PIN"
+                    />
+                    {errors.shipping_address && <div className="form-error">{errors.shipping_address}</div>}
+                  </div>
+                </>
+              )}
+
+              {/* Payment Method */}
+              <div className="form-group" style={{ marginTop: 20 }}>
+                <label className="form-label">Payment Method</label>
+                <div className="payment-method-group">
+                  <div
+                    className={`payment-method-option${paymentMethod === 'razorpay' ? ' selected' : ''}`}
+                    onClick={() => setPaymentMethod('razorpay')}
+                  >
+                    <input type="radio" name="payment" value="razorpay" readOnly checked={paymentMethod === 'razorpay'} />
+                    <div>
+                      <div className="payment-method-label">💳 Pay Online</div>
+                      <div className="payment-method-sub">UPI, Card, Net Banking via Razorpay</div>
+                    </div>
+                  </div>
+                  <div
+                    className={`payment-method-option${paymentMethod === 'cod' ? ' selected' : ''}`}
+                    onClick={() => setPaymentMethod('cod')}
+                  >
+                    <input type="radio" name="payment" value="cod" readOnly checked={paymentMethod === 'cod'} />
+                    <div>
+                      <div className="payment-method-label">
+                        💵 Cash on Delivery
+                        <span className="cod-badge">COD</span>
+                      </div>
+                      <div className="payment-method-sub">Pay when your order arrives</div>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div className="form-group">
-                <label className="form-label">Phone Number *</label>
-                <input
-                  className={`form-input${errors.shipping_phone ? ' error' : ''}`}
-                  value={form.shipping_phone}
-                  onChange={e => setForm(f => ({ ...f, shipping_phone: e.target.value }))}
-                />
-                {errors.shipping_phone && <div className="form-error">{errors.shipping_phone}</div>}
-              </div>
-              <div className="form-group">
-                <label className="form-label">Delivery Address *</label>
-                <textarea
-                  className={`form-input${errors.shipping_address ? ' error' : ''}`}
-                  rows={4}
-                  value={form.shipping_address}
-                  onChange={e => setForm(f => ({ ...f, shipping_address: e.target.value }))}
-                  placeholder="House/Flat, Street, Area, City, State, PIN"
-                />
-                {errors.shipping_address && <div className="form-error">{errors.shipping_address}</div>}
-              </div>
-              <button type="submit" className="btn btn-primary btn-full btn-lg" disabled={submitting}>
-                {submitting ? 'Placing Order...' : 'Place Order'}
+
+              <button type="submit" className="btn btn-primary btn-full btn-lg" style={{ marginTop: 8 }} disabled={submitting}>
+                {submitting ? 'Placing Order...' : paymentMethod === 'cod' ? 'Place Order (Pay on Delivery)' : 'Proceed to Payment'}
               </button>
             </div>
           </form>

@@ -1,10 +1,12 @@
 import re as _re
+import threading
 from datetime import datetime, timezone
 
 from flask import Blueprint, jsonify, request
 from flask_login import current_user, login_required
 
-from db import calculate_totals, get_cart_items, get_db, place_order
+from db import calculate_totals, get_cart_items, get_db, get_user_by_id, place_order
+from email_utils import send_order_confirmation
 
 checkout = Blueprint('checkout', __name__, url_prefix='/api')
 
@@ -67,6 +69,9 @@ def checkout_page():
     shipping_phone   = data.get('shipping_phone', '').strip()
     shipping_address = data.get('shipping_address', '').strip()
     coupon_code_raw  = data.get('coupon_code', '').strip().upper() or None
+    payment_method   = data.get('payment_method', 'razorpay').strip().lower()
+    if payment_method not in ('razorpay', 'cod'):
+        payment_method = 'razorpay'
 
     errors = {}
     if not shipping_name:
@@ -105,8 +110,38 @@ def checkout_page():
     ok, message, order_id = place_order(
         user_id, shipping_name, shipping_phone, shipping_address,
         coupon_code=coupon_code, discount_amount=discount_amount,
+        payment_method=payment_method,
     )
     if not ok:
         return jsonify({'error': message}), 400
 
-    return jsonify({'success': True, 'order_id': order_id})
+    # Send confirmation email in background (never blocks the response)
+    try:
+        user = get_user_by_id(user_id)
+        cart_items_for_email = get_cart_items.__wrapped__(user_id) if hasattr(get_cart_items, '__wrapped__') else []
+    except Exception:
+        user = None
+
+    if user and user.get('notify_email', 1):
+        conn = get_db()
+        try:
+            items_for_mail = conn.execute(
+                "SELECT oi.product_name AS name, oi.quantity, oi.unit_price AS price "
+                "FROM order_items oi WHERE oi.order_id = ?", (order_id,)
+            ).fetchall()
+            order_row = conn.execute(
+                "SELECT total FROM orders WHERE id = ?", (order_id,)
+            ).fetchone()
+            items_list = [dict(i) for i in items_for_mail]
+            order_total = order_row['total'] if order_row else 0
+        finally:
+            conn.close()
+
+        threading.Thread(
+            target=send_order_confirmation,
+            args=(order_id, user['name'], user['email'],
+                  items_list, order_total, shipping_address, payment_method),
+            daemon=True,
+        ).start()
+
+    return jsonify({'success': True, 'order_id': order_id, 'payment_method': payment_method})

@@ -44,11 +44,13 @@ export default function CartPage() {
                   <div className="cart-item-name">{item.name}</div>
                   <div className="cart-item-price">₹{item.price} each</div>
                   <div className="cart-item-actions">
-                    <input type="number" min={1} max={item.stock} value={item.quantity} className="qty-input"
-                      onChange={e => {
-                        const v = Math.min(item.stock, Math.max(1, parseInt(e.target.value) || 1))
-                        updateCart(item.product_id, v)
-                      }} />
+                    <div className="qty-stepper">
+                      <button className="qty-btn" disabled={item.quantity <= 1}
+                        onClick={() => updateCart(item.product_id, item.quantity - 1)}>−</button>
+                      <span className="qty-display">{item.quantity}</span>
+                      <button className="qty-btn" disabled={item.quantity >= item.stock}
+                        onClick={() => updateCart(item.product_id, item.quantity + 1)}>+</button>
+                    </div>
                     <button className="btn btn-danger btn-sm" onClick={() => removeFromCart(item.product_id)}>Remove</button>
                   </div>
                 </div>

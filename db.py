@@ -264,7 +264,7 @@ def calculate_totals(items, discount_amount=0.0):
 
 
 def place_order(user_id, shipping_name, shipping_phone, shipping_address,
-                coupon_code=None, discount_amount=0.0):
+                coupon_code=None, discount_amount=0.0, payment_method='razorpay'):
     conn = get_db()
     try:
         items = conn.execute("""
@@ -283,16 +283,17 @@ def place_order(user_id, shipping_name, shipping_phone, shipping_address,
 
         totals = calculate_totals(items, discount_amount)
 
+        initial_status = 'cod_pending' if payment_method == 'cod' else 'pending'
         conn.execute("BEGIN")
         cursor = conn.execute("""
             INSERT INTO orders
               (user_id, status, subtotal, shipping_fee, total,
                shipping_name, shipping_phone, shipping_address,
-               coupon_code, discount_amount)
-            VALUES (?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (user_id, totals['subtotal'], totals['shipping_fee'], totals['total'],
+               coupon_code, discount_amount, payment_method)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (user_id, initial_status, totals['subtotal'], totals['shipping_fee'], totals['total'],
               shipping_name, shipping_phone, shipping_address,
-              coupon_code or None, totals['discount_amount']))
+              coupon_code or None, totals['discount_amount'], payment_method))
         order_id = cursor.lastrowid
 
         for item in items:
@@ -482,6 +483,11 @@ def migrate_db():
         ]:
             if col not in orders_cols:
                 conn.execute(ddl)
+
+        # UX fixes: payment_method column on orders
+        orders_cols = [r[1] for r in conn.execute("PRAGMA table_info(orders)").fetchall()]
+        if 'payment_method' not in orders_cols:
+            conn.execute("ALTER TABLE orders ADD COLUMN payment_method TEXT NOT NULL DEFAULT 'razorpay'")
 
         # Feature 17: contact messages table
         conn.execute("""

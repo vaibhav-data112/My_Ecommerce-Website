@@ -26,6 +26,7 @@ export default function PaymentPage() {
     getPaymentInfo(id)
       .then(r => {
         if (r.data.already_paid) { navigate(`/orders/${id}`); return }
+        if (r.data.is_cod)       { navigate(`/orders/${id}`); return }
         setData(r.data)
       })
       .catch(err => setError(err.response?.data?.error || 'Failed to load payment info'))

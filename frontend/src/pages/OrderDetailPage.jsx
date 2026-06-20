@@ -53,6 +53,11 @@ export default function OrderDetailPage() {
             ✓ Payment successful! Your order has been confirmed.
           </div>
         )}
+        {order.status === 'cod_pending' && (
+          <div className="alert alert-success" style={{ marginBottom: 24 }}>
+            ✓ Order placed! Pay with cash when your order arrives.
+          </div>
+        )}
 
         <div className="card" style={{ padding: 28, marginBottom: 20 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>

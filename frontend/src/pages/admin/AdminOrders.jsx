@@ -4,8 +4,8 @@ import AdminSidebar from '../../components/AdminSidebar'
 import Spinner from '../../components/Spinner'
 
 const STATUSES = [
-  'paid', 'packed', 'shipped', 'out_for_delivery', 'delivered',
-  'cancelled', 'return_requested', 'returned', 'refunded',
+  'pending', 'cod_pending', 'cod_paid', 'paid', 'packed', 'shipped',
+  'out_for_delivery', 'delivered', 'cancelled', 'return_requested', 'returned', 'refunded',
 ]
 const statusClass = s => `status-badge badge-${s}`
 

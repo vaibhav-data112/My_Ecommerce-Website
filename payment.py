@@ -31,7 +31,10 @@ def pay_page(order_id):
     if order['status'] == 'paid':
         return jsonify({'already_paid': True, 'order_id': order_id})
 
-    if order['status'] != 'pending':
+    if order.get('payment_method') == 'cod':
+        return jsonify({'is_cod': True, 'order_id': order_id})
+
+    if order['status'] not in ('pending',):
         return jsonify({'error': 'This order cannot be paid.'}), 400
 
     try:
