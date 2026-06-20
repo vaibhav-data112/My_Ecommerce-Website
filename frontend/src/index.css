@@ -725,6 +725,16 @@ textarea.form-input { resize: vertical; min-height: 100px; }
 }
 
 /* ===========================
+   COD INFO CARD
+   =========================== */
+.cod-info-card { background: #FFFBEB; border: 1.5px solid #FCD34D; border-radius: var(--radius-lg); padding: 20px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.cod-info-header { display: flex; align-items: center; gap: 14px; }
+.cod-info-icon { font-size: 32px; flex-shrink: 0; }
+.cod-info-title { font-family: var(--font-head); font-size: 16px; color: #92400E; font-weight: 700; margin-bottom: 2px; }
+.cod-info-sub { font-size: var(--fs-sm); color: #78350F; }
+.cod-info-actions { flex-shrink: 0; }
+
+/* ===========================
    SAVED ADDRESS SELECTOR
    =========================== */
 .saved-addresses-section { margin-bottom: 20px; }

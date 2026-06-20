@@ -31,10 +31,10 @@ def pay_page(order_id):
     if order['status'] == 'paid':
         return jsonify({'already_paid': True, 'order_id': order_id})
 
-    if order.get('payment_method') == 'cod':
+    if order.get('payment_method') == 'cod' and order['status'] not in ('cod_pending',):
         return jsonify({'is_cod': True, 'order_id': order_id})
 
-    if order['status'] not in ('pending',):
+    if order['status'] not in ('pending', 'cod_pending'):
         return jsonify({'error': 'This order cannot be paid.'}), 400
 
     try:
@@ -95,7 +95,7 @@ def verify_payment():
     conn = get_db()
     try:
         conn.execute(
-            "UPDATE orders SET status = 'paid', payment_id = ? WHERE id = ?",
+            "UPDATE orders SET status = 'paid', payment_id = ?, payment_method = 'razorpay' WHERE id = ?",
             (rz_payment_id, order['id'])
         )
         conn.commit()

@@ -1,13 +1,29 @@
 import { useEffect, useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import { getOrder, requestReturn } from '../api/orders'
 import OrderTimeline from '../components/OrderTimeline'
 import Spinner from '../components/Spinner'
 
 const statusClass = s => `status-badge badge-${s}`
 
+const STATUS_LABELS = {
+  pending:          'Order Confirmed',
+  cod_pending:      'Cash Due on Delivery',
+  cod_paid:         'Cash Collected',
+  paid:             'Payment Received',
+  packed:           'Being Packed',
+  shipped:          'Shipped',
+  out_for_delivery: 'Out for Delivery',
+  delivered:        'Delivered',
+  cancelled:        'Cancelled',
+  return_requested: 'Return Requested',
+  returned:         'Return Approved',
+  refunded:         'Refunded',
+}
+
 export default function OrderDetailPage() {
   const { id }    = useParams()
+  const navigate  = useNavigate()
   const [data, setData]         = useState(null)
   const [loading, setLoading]   = useState(true)
   const [returnReason,   setReturnReason]   = useState('')
@@ -50,12 +66,30 @@ export default function OrderDetailPage() {
 
         {order.status === 'paid' && (
           <div className="alert alert-success" style={{ marginBottom: 24 }}>
-            ✓ Payment successful! Your order has been confirmed.
+            ✓ Payment received! Your order has been confirmed.
           </div>
         )}
-        {order.status === 'cod_pending' && (
+
+        {/* COD Payment Info Card */}
+        {order.payment_method === 'cod' && order.status === 'cod_pending' && (
+          <div className="cod-info-card" style={{ marginBottom: 24 }}>
+            <div className="cod-info-header">
+              <span className="cod-info-icon">💵</span>
+              <div>
+                <div className="cod-info-title">Cash on Delivery</div>
+                <div className="cod-info-sub">Keep <strong>₹{order.total?.toFixed(0)}</strong> cash ready when delivery arrives</div>
+              </div>
+            </div>
+            <div className="cod-info-actions">
+              <button className="btn btn-outline btn-sm" onClick={() => navigate(`/payment/${order.id}`)}>
+                💳 Switch to Online Payment
+              </button>
+            </div>
+          </div>
+        )}
+        {order.payment_method === 'cod' && order.status === 'cod_paid' && (
           <div className="alert alert-success" style={{ marginBottom: 24 }}>
-            ✓ Order placed! Pay with cash when your order arrives.
+            ✓ Cash payment collected. Thank you!
           </div>
         )}
 
@@ -67,7 +101,7 @@ export default function OrderDetailPage() {
                 Placed on {new Date(order.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
               </div>
             </div>
-            <span className={statusClass(order.status)}>{order.status}</span>
+            <span className={statusClass(order.status)}>{STATUS_LABELS[order.status] || order.status}</span>
           </div>
 
           <h4 style={{ fontWeight: 600, marginBottom: 12, color: 'var(--text-soft)', fontSize: 13, textTransform: 'uppercase', letterSpacing: 1 }}>Items Ordered</h4>
